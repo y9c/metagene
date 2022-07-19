@@ -17,9 +17,11 @@ keywords = ["DNA", "RNA", "metagene", "biology"]
 python = "^3.8"
 Click = "^7.0.0"
 matplotlib = "^3.0.0"
+pyranges = "^0.0.117"
+ray = "^1.13.0"
 
 [tool.poetry.dev-dependencies]
 twine = "^3.1.1"
 
 [tool.poetry.scripts]
-cfutils = "metagene.cli:cli"
+metagene = "metagene.cli:cli"
