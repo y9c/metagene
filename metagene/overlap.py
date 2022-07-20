@@ -6,6 +6,7 @@
 #
 # Created: 2022-07-18 22:42
 
+import os
 import sys
 
 import numpy as np
@@ -13,7 +14,9 @@ import pandas as pd
 import pyranges as pr
 
 
-def parse_features(feature_file_name: str) -> tuple[pd.DataFrame, dict]:
+def parse_features(
+    feature_file_name: str | os.PathLike,
+) -> tuple[pd.DataFrame, dict]:
     df = pd.read_csv(
         feature_file_name,
         sep="\t",
