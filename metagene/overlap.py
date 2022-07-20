@@ -74,6 +74,9 @@ def annotate_with_feature(
         ),
     )
     df = df.loc[:, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]]
+    # Use attrs property to store metadata in dataframe
+    # DataFrame.attrs is an experimental feature, use be used with pandas >= 1.0
+    df.attrs.update(type2ratio)
     return df
 
 
