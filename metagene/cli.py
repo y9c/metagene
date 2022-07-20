@@ -15,7 +15,7 @@ import click
 from .overlap import annotate_with_feature, parse_features, parse_input
 
 
-@click.command()
+@click.command(help="metagene command line interface", no_args_is_help=True)
 @click.option(
     "--input", "-i", type=click.Path(exists=True), help="Input file."
 )

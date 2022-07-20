@@ -18,6 +18,7 @@ def parse_features(feature_file_name: str) -> tuple[pd.DataFrame, dict]:
         feature_file_name,
         sep="\t",
         names=["Chromosome", "Start", "End", "Name", "Index", "Strand"],
+        comment="#",
     ).assign(n_L=lambda x: x["End"] - x["Start"])
     df["Type"] = df["Name"].str.split(":").str[-1]
     df["n_T"] = df.groupby("Name")["n_L"].transform("sum")
@@ -34,6 +35,7 @@ def parse_input(input_file_name: str) -> pd.DataFrame:
         sep="\t",
         usecols=[0, 1, 2, 5],
         names=["Chromosome", "Start", "End", "Strand"],
+        comment="#",
     )
 
 

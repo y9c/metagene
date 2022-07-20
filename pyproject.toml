@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "metagene"
-version = "0.0.0.dev2"
+version = "0.0.0.dev3"
 description = "Metagene Profiling Analysis and Visualization"
 authors = ["Ye Chang <yech1990@gmail.com>"]
 license = "MIT"
