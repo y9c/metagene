@@ -15,13 +15,16 @@ import pyranges as pr
 
 
 def parse_features(feature_file_name: str) -> tuple[pd.DataFrame, dict]:
-    df = pd.read_csv(
-        feature_file_name,
-        sep="\t",
-        names=["Chromosome", "Start", "End", "Name", "Index", "Strand"],
-        comment="#",
-    ).assign(len_of_windown=lambda x: x["End"] - x["Start"])
-    df["Type"] = df["Name"].str.split(":").str[-1]
+    df = (
+        pd.read_csv(
+            feature_file_name,
+            sep="\t",
+            names=["Chromosome", "Start", "End", "Name", "Index", "Strand"],
+            comment="#",
+        )
+        .sort_values(["Name", "Index"], ascending=True)
+        .assign(len_of_windown=lambda x: x["End"] - x["Start"])
+    )
     df["len_of_feature"] = df.groupby("Name")["len_of_windown"].transform(
         "sum"
     )
@@ -29,6 +32,7 @@ def parse_features(feature_file_name: str) -> tuple[pd.DataFrame, dict]:
         df.groupby("Name")["len_of_windown"].transform("cumsum")
         - df["len_of_windown"]
     ) / df["len_of_feature"]
+    df["Type"] = df["Name"].str.split(":").str[-1]
     s = df.groupby("Type")["len_of_windown"].sum()
     return df, (s / s.sum()).to_dict()
 
@@ -63,10 +67,12 @@ def annotate_with_feature(
         .apply(lambda x: x.nlargest(1, "Overlap"))
         .assign(
             d=lambda x: np.where(
-                x.Strand == "+",
-                ((x.Start + x.End) // 2 - x.Start_ref) / x.len_of_feature
+                x.Strand_ref == "+",
+                (np.minimum((x.Start + x.End) // 2, x.End_ref) - x.Start_ref)
+                / x.len_of_feature
                 + x.frac_of_feature,
-                (x.End_ref - (x.Start + x.End) // 2) / x.len_of_feature
+                (x.End_ref - np.maximum((x.Start + x.End) // 2, x.End_ref))
+                / x.len_of_feature
                 + x.frac_of_feature,
             )
         )
@@ -85,6 +91,7 @@ def annotate_with_feature(
     df = df.loc[:, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]]
     # Use attrs property to store metadata in dataframe
     # DataFrame.attrs is an experimental feature, use be used with pandas >= 1.0
+    print(type2ratio, file=sys.stderr)
     df.attrs.update(type2ratio)
     return df
 
