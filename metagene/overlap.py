@@ -38,13 +38,18 @@ def parse_features(feature_file_name: str) -> tuple[pd.DataFrame, dict]:
 
 
 def parse_input(input_file_name: str) -> pd.DataFrame:
-    return pd.read_csv(
+    df = pd.read_csv(
         input_file_name,
         sep="\t",
         usecols=[0, 1, 2, 5],
         names=["Chromosome", "Start", "End", "Strand"],
         comment="#",
     )
+
+    df["Chromosome"] = (
+        df["Chromosome"].str.replace("chrM", "MT").str.replace("chr", "")
+    )
+    return df
 
 
 def annotate_with_feature(
@@ -71,7 +76,7 @@ def annotate_with_feature(
                 (np.minimum((x.Start + x.End) // 2, x.End_ref) - x.Start_ref)
                 / x.len_of_feature
                 + x.frac_of_feature,
-                (x.End_ref - np.maximum((x.Start + x.End) // 2, x.End_ref))
+                (x.End_ref - np.maximum((x.Start + x.End) // 2, x.Start_ref))
                 / x.len_of_feature
                 + x.frac_of_feature,
             )
