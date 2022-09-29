@@ -35,8 +35,12 @@ from .overlap import annotate_with_feature, parse_features, parse_input
 )
 def cli(input, feature, threads, buildin_features):
     if buildin_features is not None:
+        if buildin_features == "GRCm38":
+            raise "Not implemented yet..."
         df_feature, type2ratio = parse_features(
-            importlib.resources.path(data_package, "GRCh38.bed.gz")
+            importlib.resources.files("metagene.data").joinpath(
+                f"{buildin_features}.bed.gz"
+            )
         )
     else:
         df_feature, type2ratio = parse_features(feature)
