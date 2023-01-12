@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "metagene"
-version = "0.0.0.dev12"
+version = "0.0.0.dev14"
 description = "Metagene Profiling Analysis and Visualization"
 authors = ["Ye Chang <yech1990@gmail.com>"]
 license = "MIT"
@@ -18,7 +18,6 @@ python = "^3.8"
 Click = "^8.0.0"
 matplotlib = "^3.0.0"
 pyranges = "^0.0.117"
-ray = "^1.13.0"
 pandas = "^1.4.3"
 
 [tool.poetry.dev-dependencies]
