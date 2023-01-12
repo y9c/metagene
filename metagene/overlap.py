@@ -29,7 +29,7 @@ def parse_features(feature_file_name: str) -> pd.DataFrame:
         df.groupby("Name")["len_of_window"].transform("cumsum")
         - df["len_of_window"]
     ) / df["len_of_feature"]
-    df["Type"] = df["Name"].str.split(":").str[-1]
+    df[["Transcript", "Type"]] = df["Name"].str.split(":", expand=True)
     return df
 
 
@@ -91,10 +91,14 @@ def annotate_with_feature(
     else:
         # type to ratio is differ for different input bins
         s = (
-            df.loc[:, ["Name_ref", "Type", "len_of_window"]]
-            .drop_duplicates()
-            .groupby("Type")["len_of_window"]
+            df_feature[
+                df_feature["Transcript"].isin(df["Transcript"].unique())
+            ]
+            .groupby(["Transcript", "Type"])["len_of_window"]
             .sum()
+            .reset_index()
+            .groupby(["Type"])["len_of_window"]
+            .median()
         )
         type2ratio = (s / s.sum()).to_dict()
         if (
