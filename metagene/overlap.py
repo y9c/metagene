@@ -55,6 +55,7 @@ def annotate_with_feature(
     type_ratios=None,
     annot_name=False,
     keep_all=False,
+    by_strand=False,
 ) -> pd.DataFrame:
     df = (
         pr.PyRanges(df_input)
@@ -63,6 +64,7 @@ def annotate_with_feature(
             suffix="_ref",
             report_overlap=True,
             nb_cpu=nb_cpu,
+            strandedness="same" if by_strand else None,
         )
         .df.groupby(
             ["Chromosome", "Start", "End"], as_index=False, group_keys=False
@@ -81,16 +83,28 @@ def annotate_with_feature(
         )
     )
 
-    if type_ratios:
+    if type_ratios is not None:
         type_ratios = np.array(type_ratios)
         type2ratio = dict(
             zip(["5UTR", "CDS", "3UTR"], type_ratios / np.sum(type_ratios))
         )
     else:
         # type to ratio is differ for different input bins
-        s = df.groupby("Type")["len_of_window"].sum()
+        s = (
+            df.loc[:, ["Name_ref", "Type", "len_of_window"]]
+            .drop_duplicates()
+            .groupby("Type")["len_of_window"]
+            .sum()
+        )
         type2ratio = (s / s.sum()).to_dict()
-
+        if (
+            "5UTR" not in type2ratio
+            or "CDS" not in type2ratio
+            or "3UTR" not in type2ratio
+        ):
+            sys.exit(
+                "Error: Given ranges do not overlap all 3 features: 5'UTR, CDS and 3'UTR ! Please use the type_ratios argument instead."
+            )
     df["d_norm"] = np.where(
         df["Type"] == "5UTR",
         df["d"] * type2ratio["5UTR"],
