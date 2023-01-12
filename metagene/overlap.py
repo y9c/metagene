@@ -57,6 +57,7 @@ def annotate_with_feature(
     df_feature: pd.DataFrame,
     type2ratio: dict,
     nb_cpu=8,
+    annot_name=False,
 ) -> pd.DataFrame:
     df = (
         pr.PyRanges(df_input)
@@ -93,6 +94,8 @@ def annotate_with_feature(
             + type2ratio["CDS"],
         ),
     )
+    if annot_name:
+        df["Name"] = df["Name_ref"]
     df = df.loc[:, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]]
     # Use attrs property to store metadata in dataframe
     # DataFrame.attrs is an experimental feature, use be used with pandas >= 1.0
