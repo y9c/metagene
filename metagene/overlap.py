@@ -6,7 +6,6 @@
 #
 # Created: 2022-07-18 22:42
 
-import os
 import sys
 
 import numpy as np
@@ -14,7 +13,7 @@ import pandas as pd
 import pyranges as pr
 
 
-def parse_features(feature_file_name: str) -> tuple[pd.DataFrame, dict]:
+def parse_features(feature_file_name: str) -> pd.DataFrame:
     df = (
         pd.read_csv(
             feature_file_name,
@@ -23,18 +22,15 @@ def parse_features(feature_file_name: str) -> tuple[pd.DataFrame, dict]:
             comment="#",
         )
         .sort_values(["Name", "Index"], ascending=True)
-        .assign(len_of_windown=lambda x: x["End"] - x["Start"])
+        .assign(len_of_window=lambda x: x["End"] - x["Start"])
     )
-    df["len_of_feature"] = df.groupby("Name")["len_of_windown"].transform(
-        "sum"
-    )
+    df["len_of_feature"] = df.groupby("Name")["len_of_window"].transform("sum")
     df["frac_of_feature"] = (
-        df.groupby("Name")["len_of_windown"].transform("cumsum")
-        - df["len_of_windown"]
+        df.groupby("Name")["len_of_window"].transform("cumsum")
+        - df["len_of_window"]
     ) / df["len_of_feature"]
     df["Type"] = df["Name"].str.split(":").str[-1]
-    s = df.groupby("Type")["len_of_windown"].sum()
-    return df, (s / s.sum()).to_dict()
+    return df
 
 
 def parse_input(input_file_name: str) -> pd.DataFrame:
@@ -55,9 +51,10 @@ def parse_input(input_file_name: str) -> pd.DataFrame:
 def annotate_with_feature(
     df_input: pd.DataFrame,
     df_feature: pd.DataFrame,
-    type2ratio: dict,
     nb_cpu=8,
+    type_ratios=None,
     annot_name=False,
+    keep_all=False,
 ) -> pd.DataFrame:
     df = (
         pr.PyRanges(df_input)
@@ -83,6 +80,17 @@ def annotate_with_feature(
             )
         )
     )
+
+    if type_ratios:
+        type_ratios = np.array(type_ratios)
+        type2ratio = dict(
+            zip(["5UTR", "CDS", "3UTR"], type_ratios / np.sum(type_ratios))
+        )
+    else:
+        # type to ratio is differ for different input bins
+        s = df.groupby("Type")["len_of_window"].sum()
+        type2ratio = (s / s.sum()).to_dict()
+
     df["d_norm"] = np.where(
         df["Type"] == "5UTR",
         df["d"] * type2ratio["5UTR"],
@@ -96,7 +104,10 @@ def annotate_with_feature(
     )
     if annot_name:
         df["Name"] = df["Name_ref"]
-    df = df.loc[:, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]]
+    if not keep_all:
+        df = df.loc[
+            :, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]
+        ]
     # Use attrs property to store metadata in dataframe
     # DataFrame.attrs is an experimental feature, use be used with pandas >= 1.0
     print(type2ratio, file=sys.stderr)
@@ -107,8 +118,8 @@ def annotate_with_feature(
 if __name__ == "__main__":
     INPUT_FILE = "../data/input.bed.gz"
     FEATURE_FILE = "../data/features.bed.gz"
-    df_feature, type2ratio = parse_features(FEATURE_FILE)
+    df_feature = parse_features(FEATURE_FILE)
     df_input = parse_input(INPUT_FILE)
-    annotate_with_feature(df_input, df_feature, type2ratio).to_csv(
+    annotate_with_feature(df_input, df_feature).to_csv(
         sys.stdout, sep="\t", index=False, header=False
     )

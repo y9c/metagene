@@ -37,14 +37,14 @@ def cli(input, feature, threads, buildin_features):
     if buildin_features is not None:
         if buildin_features == "GRCm38":
             raise "Not implemented yet..."
-        df_feature, type2ratio = parse_features(
+        df_feature = parse_features(
             importlib.resources.files("metagene.data").joinpath(
                 f"{buildin_features}.bed.gz"
             )
         )
     else:
-        df_feature, type2ratio = parse_features(feature)
+        df_feature = parse_features(feature)
     df_input = parse_input(input)
-    annotate_with_feature(
-        df_input, df_feature, type2ratio, nb_cpu=threads
-    ).to_csv(sys.stdout, sep="\t", index=False, header=False)
+    annotate_with_feature(df_input, df_feature, nb_cpu=threads).to_csv(
+        sys.stdout, sep="\t", index=False, header=False
+    )
