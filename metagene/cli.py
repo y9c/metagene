@@ -98,6 +98,9 @@ def cli(
 
     if output == "-":
         output = sys.stdout
+    if output.endswith(".gz"):
+        import gzip
+        output = gzip.open(output, "wt")
     else:
         output = open(output, "w")
     logger.info(

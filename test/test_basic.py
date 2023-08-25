@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""test for cfutils"""
+"""test for cfutils."""
 
 import sys
 import unittest
 
 
 class TestBasicFunc(unittest.TestCase):
-    """Test basic"""
+    """Test basic."""
 
     def test_basic(self):
-        """Test basic"""
+        """Test basic."""
         self.assertGreaterEqual(sys.version_info, (3, 6))
 
 
