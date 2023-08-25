@@ -10,19 +10,24 @@ import sys
 
 import numpy as np
 import pandas as pd
+import polars as pl
 import pyranges as pr
 
 
 def parse_features(feature_file_name: str) -> pd.DataFrame:
-    df = (
-        pd.read_csv(
+    if feature_file_name.endswith(".bed") or feature_file_name.endswith(
+        ".bed.gz"
+    ):
+        df = pd.read_csv(
             feature_file_name,
             sep="\t",
             names=["Chromosome", "Start", "End", "Name", "Index", "Strand"],
             comment="#",
         )
-        .sort_values(["Name", "Index"], ascending=True)
-        .assign(len_of_window=lambda x: x["End"] - x["Start"])
+    else:
+        df = pl.read_parquet(feature_file_name).to_pandas()
+    df = df.sort_values(["Name", "Index"], ascending=True).assign(
+        len_of_window=lambda x: x["End"] - x["Start"]
     )
     df["len_of_feature"] = df.groupby("Name")["len_of_window"].transform("sum")
     df["frac_of_feature"] = (
@@ -33,15 +38,31 @@ def parse_features(feature_file_name: str) -> pd.DataFrame:
     return df
 
 
-def parse_input(input_file_name: str) -> pd.DataFrame:
-    df = pd.read_csv(
-        input_file_name,
-        sep="\t",
-        usecols=[0, 1, 2, 5],
-        names=["Chromosome", "Start", "End", "Strand"],
-        comment="#",
-    )
-
+def parse_input(
+    input_file_name: str,
+    with_header: bool = False,
+    col_index: list = [0, 1, 2, 5],
+) -> pd.DataFrame:
+    if len(col_index) == 4:
+        df = pd.read_csv(
+            input_file_name,
+            sep="\t",
+            usecols=col_index,
+            names=["Chromosome", "Start", "End", "Strand"],
+            dtype={"Chromosome": str, "Start": int, "End": int, "Strand": str},
+            comment="#",
+            skiprows=1 if with_header else 0,
+        )
+    elif len(col_index) == 3:
+        df = pd.read_csv(
+            input_file_name,
+            sep="\t",
+            usecols=col_index,
+            names=["Chromosome", "End", "Strand"],
+            dtype={"Chromosome": str, "End": int, "Strand": str},
+            comment="#",
+            skiprows=1 if with_header else 0,
+        ).assign(Start=lambda x: x["End"] - 1)
     df["Chromosome"] = (
         df["Chromosome"].str.replace("chrM", "MT").str.replace("chr", "")
     )
@@ -107,7 +128,9 @@ def annotate_with_feature(
             or "3UTR" not in type2ratio
         ):
             sys.exit(
-                "Error: Given ranges do not overlap all 3 features: 5'UTR, CDS and 3'UTR ! Please use the type_ratios argument instead."
+                "Error: Given ranges do not overlap all 3 features: "
+                "5'UTR, CDS and 3'UTR !"
+                "Please use the type_ratios argument instead."
             )
     df["d_norm"] = np.where(
         df["Type"] == "5UTR",
