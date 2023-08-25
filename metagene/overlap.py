@@ -151,7 +151,6 @@ def annotate_with_feature(
         ]
     # Use attrs property to store metadata in dataframe
     # DataFrame.attrs is an experimental feature, use be used with pandas >= 1.0
-    print(type2ratio, file=sys.stderr)
     df.attrs.update(type2ratio)
     return df
 
