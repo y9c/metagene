@@ -41,9 +41,25 @@ def parse_features(feature_file_name: str) -> pd.DataFrame:
 def parse_input(
     input_file_name: str,
     with_header: bool = False,
-    col_index: list = [0, 1, 2, 5],
+    col_index: list = [0, 1, 2, 4, 5],
 ) -> pd.DataFrame:
-    if len(col_index) == 4:
+    if len(col_index) == 5:
+        df = pd.read_csv(
+            input_file_name,
+            sep="\t",
+            usecols=col_index,
+            names=["Chromosome", "Start", "End", "Score", "Strand"],
+            dtype={
+                "Chromosome": str,
+                "Start": int,
+                "End": int,
+                "Score": float,
+                "Strand": str,
+            },
+            comment="#",
+            skiprows=1 if with_header else 0,
+        )
+    elif len(col_index) == 4:
         df = pd.read_csv(
             input_file_name,
             sep="\t",
@@ -52,7 +68,7 @@ def parse_input(
             dtype={"Chromosome": str, "Start": int, "End": int, "Strand": str},
             comment="#",
             skiprows=1 if with_header else 0,
-        )
+        ).assign(Score=1.0)
     elif len(col_index) == 3:
         df = pd.read_csv(
             input_file_name,
@@ -62,7 +78,7 @@ def parse_input(
             dtype={"Chromosome": str, "End": int, "Strand": str},
             comment="#",
             skiprows=1 if with_header else 0,
-        ).assign(Start=lambda x: x["End"] - 1)
+        ).assign(Start=lambda x: x["End"] - 1, Score=1.0)
     df["Chromosome"] = (
         df["Chromosome"].str.replace("chrM", "MT").str.replace("chr", "")
     )
@@ -74,6 +90,7 @@ def annotate_with_feature(
     df_feature: pd.DataFrame,
     nb_cpu=8,
     type_ratios=None,
+    bin_number=None,
     annot_name=False,
     keep_all=False,
     by_strand=False,
@@ -145,6 +162,20 @@ def annotate_with_feature(
     )
     if annot_name:
         df["Name"] = df["Name_ref"]
+
+    if bin_number is not None:
+        y, x = np.histogram(
+            df["d_norm"], bins=bin_number, weights=df["Score"], range=(0, 1)
+        )
+        x = (x[1:] + x[:-1]) / 2
+        df.attrs.update(
+            {
+                "bin_number": bin_number,
+                "bin_x": list(np.round(x, 6)),
+                "bin_y": list(y),
+            }
+        )
+
     if not keep_all:
         df = df.loc[
             :, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]

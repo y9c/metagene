@@ -36,14 +36,18 @@ logger.propagate = False
 )
 @click.option("--output", "-o", default="-", help="Output file.")
 @click.option(
+    "--with-header", "-H", is_flag=True, help="Input file with header."
+)
+@click.option(
     "--columns",
     "-c",
     type=str,
-    default="1,2,3,6",
-    help="Input columns, [Chromosome,Start,End,Strand] or [Chromosome,Site,Strand]",
+    default="1,2,3,5,6",
+    help="Input columns, [Chromosome,Start,End,Score,Strand], "
+    "[Chromosome,Start,End,Strand] or [Chromosome,Site,Strand]",
 )
 @click.option(
-    "--with-header", "-H", is_flag=True, help="Input file with header."
+    "--bin-number", "-b", type=int, default=None, help="Number of bins."
 )
 @click.option(
     "--features", "-f", type=click.Path(exists=True), help="Freature file."
@@ -53,7 +57,7 @@ logger.propagate = False
 )
 @click.option(
     "--buildin-features",
-    "-b",
+    "-F",
     default="GRCh38",
     type=click.Choice(
         [
@@ -67,7 +71,14 @@ logger.propagate = False
     help="Buildin features.",
 )
 def cli(
-    input, output, with_header, columns, features, threads, buildin_features
+    input,
+    output,
+    with_header,
+    columns,
+    bin_number,
+    features,
+    threads,
+    buildin_features,
 ):
     if features is None:
         logger.info("Parsing buildin features.")
@@ -94,19 +105,37 @@ def cli(
         input, with_header, col_index=[int(x) - 1 for x in columns.split(",")]
     )
     logger.info("Annotating input data using parsed feature data.")
-    df_output = annotate_with_feature(df_input, df_feature, nb_cpu=threads)
+    df_output = annotate_with_feature(
+        df_input, df_feature, bin_number=bin_number, nb_cpu=threads
+    )
 
     if output == "-":
         output = sys.stdout
-    if output.endswith(".gz"):
+    elif output.endswith(".gz"):
         import gzip
+
         output = gzip.open(output, "wt")
     else:
         output = open(output, "w")
+    for k, v in df_output.attrs.items():
+        if k in ["bin_y", "bin_x"]:
+            logger.debug(f"{k}: {v}")
+        else:
+            logger.info(f"{k}: {v}")
     logger.info(
-        f"Location for TSS and TES are:\n{df_output.attrs}"
-        "\n, and it is also written into the comment (1st) line of the output."
+        ", and they are also written into the comment lines (#) of the output."
     )
-    print("#", df_output.attrs, file=output, sep=" ")
+
+    for k, v in df_output.attrs.items():
+        print(f"# {k}: {v}", file=output)
     logger.info("Saving annotated output data.")
     df_output.to_csv(output, sep="\t", index=False, header=False)
+
+    if "bin_y" in df_output.attrs:
+        import asciichartpy
+
+        logger.info("Plotting the distribution of the reuslts.")
+        chart = asciichartpy.plot(
+            df_output.attrs["bin_y"], {"height": 10, "format": "{:8.2f}"}
+        )
+        logger.info(chart)
