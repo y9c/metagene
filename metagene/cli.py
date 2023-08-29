@@ -22,7 +22,7 @@ from .read_gtf import gtf_to_bed
 
 logger = logging.getLogger("metagene")
 # logger = logging.getLogger(__name__)
-logger.addHandler(RichHandler())
+logger.addHandler(RichHandler(show_path=False))
 logger.propagate = False
 
 
