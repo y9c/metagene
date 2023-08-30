@@ -10,3 +10,9 @@
 ## DEMO
 
 ![demo](docs/fig_metagene.svg)
+
+- example
+
+```bash
+metagene -i metagene/data/input.bed.gz -t 10 -w 7,8,9 -n a,xxx,new -F GRCh38 -b 100 -o /dev/null -s test.tsv -p test.pdf
+```

@@ -17,9 +17,11 @@ import asciichartpy
 import pandas as pd
 import rich_click as click
 from rich.logging import RichHandler
+from rich.pretty import pretty_repr
 
 from .data import __name__ as data_package
 from .overlap import annotate_with_feature, parse_features, parse_input
+from .plot import plot_metagene
 from .read_gtf import gtf_to_bed
 
 logger = logging.getLogger("metagene")
@@ -39,18 +41,18 @@ logger.propagate = False
 @click.option("--output", "-o", default="-", help="Output file.")
 @click.option(
     "--output-score",
-    "-O",
+    "-s",
+    default=None,
+    help="Output metagene plot data into file.",
+)
+@click.option(
+    "--output-figure",
+    "-p",
     default=None,
     help="Output metagene plot data into file.",
 )
 @click.option(
     "--with-header", "-H", is_flag=True, help="Input file with header."
-)
-@click.option(
-    "--plot-figure",
-    "-p",
-    is_flag=True,
-    help="Plot metagene figure. [Not supported yet.]",
 )
 @click.option(
     "--meta-columns",
@@ -66,6 +68,13 @@ logger.propagate = False
     type=str,
     default="",
     help="Input columns index for scores.",
+)
+@click.option(
+    "--weight-names",
+    "-n",
+    type=str,
+    default="",
+    help="Input columns names for scores.",
 )
 @click.option(
     "--bin-number", "-b", type=int, default=100, help="Number of bins."
@@ -95,15 +104,17 @@ def cli(
     input,
     output,
     output_score,
+    output_figure,
     with_header,
-    plot_figure,
     meta_columns,
     weight_columns,
+    weight_names,
     bin_number,
     features,
     threads,
     buildin_features,
 ):
+
     if features is None:
         logger.info("Parsing buildin features.")
         df_feature = parse_features(
@@ -134,6 +145,7 @@ def cli(
         weight_col_index=[
             int(x) - 1 for x in weight_columns.split(",") if len(x) > 0
         ],
+        weight_col_name=[x for x in weight_names.split(",") if len(x) > 0],
     )
     logger.info("Annotating input data using parsed feature data.")
     df_output = annotate_with_feature(
@@ -149,8 +161,8 @@ def cli(
     else:
         output = open(output, "w")
     for k, v in df_output.attrs.items():
-        if k in ["bin_y", "bin_x"]:
-            logger.debug(f"{k}: {v}")
+        if isinstance(v, list):
+            logger.info(f"{k}: " + pretty_repr(v, max_length=10))
         else:
             logger.info(f"{k}: {v}")
     logger.info(
@@ -163,14 +175,21 @@ def cli(
     df_output.to_csv(output, sep="\t", index=False, header=False)
 
     if output_score:
-        pd.DataFrame(
+        df_bins = pd.DataFrame(
             [df_output.attrs["bin_x"]]
             + [
                 df_output.attrs[c]
                 for c in df_output.attrs.keys()
                 if c.startswith("bin_y")
-            ]
-        ).T.to_csv(output_score, sep="\t", index=False, header=False)
+            ],
+            index=["x"]
+            + [
+                c.split("_", 1)[1]
+                for c in df_output.attrs.keys()
+                if c.startswith("bin_y")
+            ],
+        ).T
+        df_bins.to_csv(output_score, sep="\t", index=False, header=True)
 
     logger.info("Plotting the distribution of the reuslts.")
 
@@ -183,3 +202,7 @@ def cli(
         {"height": 10, "format": "{:8.2f}"},
     )
     logger.info(chart)
+    if output_figure:
+        fig = plot_metagene(df_bins, df_output.attrs)
+        fig.savefig(output_figure, bbox_inches="tight")
+        logger.info(f"Metagene plot saved to {output_figure}")

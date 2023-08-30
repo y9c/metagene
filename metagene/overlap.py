@@ -43,14 +43,17 @@ def parse_input(
     with_header: bool = False,
     meta_col_index: list = [0, 1, 2, 5],
     weight_col_index: list = [4],
+    weight_col_name: list = [],
 ) -> pd.DataFrame:
     if len(meta_col_index) == 4:
         col_name_dict = dict(
             zip(meta_col_index, ["Chromosome", "Start", "End", "Strand"])
         )
         col_type_dict = dict(zip(meta_col_index, [str, int, int, str]))
-        for i, w in enumerate(weight_col_index, 1):
-            col_name_dict[w] = f"Weight_{i}"
+        for i, w in enumerate(weight_col_index):
+            col_name_dict[w] = "Weight_" + (
+                weight_col_name[i] if weight_col_name else str(i + 1)
+            )
             col_type_dict[w] = np.float64
         col_name_dict = dict(sorted(col_name_dict.items()))
 
@@ -68,8 +71,10 @@ def parse_input(
             zip(meta_col_index, ["Chromosome", "End", "Strand"])
         )
         col_type_dict = dict(zip(meta_col_index, [str, int, str]))
-        for i, w in enumerate(weight_col_index, 1):
-            col_name_dict[w] = f"Weight_{i}"
+        for i, w in enumerate(weight_col_index):
+            col_name_dict[w] = "Weight_" + (
+                weight_col_name[i] if weight_col_name else str(i + 1)
+            )
             col_type_dict[w] = np.float64
         col_name_dict = dict(sorted(col_name_dict.items()))
         df = pd.read_csv(
@@ -170,14 +175,17 @@ def annotate_with_feature(
     if len(weight_col) > 0:
         for c in weight_col:
             y, x = np.histogram(
-                df["d_norm"], bins=bin_number, weights=df[c], range=(0, 1)
+                df["d_norm"],
+                bins=bin_number,
+                weights=df[c].fillna(0),
+                range=(0, 1),
             )
             x = (x[1:] + x[:-1]) / 2
             df.attrs.update(
                 {
                     "bin_number": bin_number,
                     "bin_x": list(np.round(x, 6)),
-                    "bin_y" + c.replace("Weight_", ""): list(y),
+                    "bin_y_" + c.replace("Weight_", ""): list(y),
                 }
             )
     else:
