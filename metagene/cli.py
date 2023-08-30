@@ -128,8 +128,12 @@ def cli(
     df_input = parse_input(
         input,
         with_header,
-        meta_col_index=[int(x) - 1 for x in meta_columns.split(",")],
-        weight_col_index=[int(x) - 1 for x in weight_columns.split(",")],
+        meta_col_index=[
+            int(x) - 1 for x in meta_columns.split(",") if len(x) > 0
+        ],
+        weight_col_index=[
+            int(x) - 1 for x in weight_columns.split(",") if len(x) > 0
+        ],
     )
     logger.info("Annotating input data using parsed feature data.")
     df_output = annotate_with_feature(
