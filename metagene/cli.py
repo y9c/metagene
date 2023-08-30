@@ -57,14 +57,14 @@ logger.propagate = False
     "-c",
     type=str,
     default="1,2,3,6",
-    help="Input columns index for meta data. "
+    help="Input columns index for meta data. Read from bed file by default. "
     "[Chromosome,Start,End,Strand] or [Chromosome,Site,Strand]",
 )
 @click.option(
     "--weight-columns",
     "-w",
     type=str,
-    default="5",
+    default="",
     help="Input columns index for scores.",
 )
 @click.option(
