@@ -41,44 +41,46 @@ def parse_features(feature_file_name: str) -> pd.DataFrame:
 def parse_input(
     input_file_name: str,
     with_header: bool = False,
-    col_index: list = [0, 1, 2, 4, 5],
+    meta_col_index: list = [0, 1, 2, 5],
+    weight_col_index: list = [4],
 ) -> pd.DataFrame:
-    if len(col_index) == 5:
+    if len(meta_col_index) == 4:
+        col_name_dict = dict(
+            zip(meta_col_index, ["Chromosome", "Start", "End", "Strand"])
+        )
+        col_type_dict = dict(zip(meta_col_index, [str, int, int, str]))
+        for i, w in enumerate(weight_col_index, 1):
+            col_name_dict[w] = f"Weight_{i}"
+            col_type_dict[w] = np.float64
+        col_name_dict = dict(sorted(col_name_dict.items()))
+
         df = pd.read_csv(
             input_file_name,
             sep="\t",
-            usecols=col_index,
-            names=["Chromosome", "Start", "End", "Score", "Strand"],
-            dtype={
-                "Chromosome": str,
-                "Start": int,
-                "End": int,
-                "Score": float,
-                "Strand": str,
-            },
+            usecols=col_name_dict.keys(),
+            names=col_name_dict.values(),
+            dtype={v: col_type_dict[k] for k, v in col_name_dict.items()},
             comment="#",
             skiprows=1 if with_header else 0,
         )
-    elif len(col_index) == 4:
+    elif len(meta_col_index) == 3:
+        col_name_dict = dict(
+            zip(meta_col_index, ["Chromosome", "End", "Strand"])
+        )
+        col_type_dict = dict(zip(meta_col_index, [str, int, str]))
+        for i, w in enumerate(weight_col_index, 1):
+            col_name_dict[w] = f"Weight_{i}"
+            col_type_dict[w] = np.float64
+        col_name_dict = dict(sorted(col_name_dict.items()))
         df = pd.read_csv(
             input_file_name,
             sep="\t",
-            usecols=col_index,
-            names=["Chromosome", "Start", "End", "Strand"],
-            dtype={"Chromosome": str, "Start": int, "End": int, "Strand": str},
+            usecols=col_name_dict.keys(),
+            names=col_name_dict.values(),
+            dtype={v: col_type_dict[k] for k, v in col_name_dict.items()},
             comment="#",
             skiprows=1 if with_header else 0,
-        ).assign(Score=1.0)
-    elif len(col_index) == 3:
-        df = pd.read_csv(
-            input_file_name,
-            sep="\t",
-            usecols=col_index,
-            names=["Chromosome", "End", "Strand"],
-            dtype={"Chromosome": str, "End": int, "Strand": str},
-            comment="#",
-            skiprows=1 if with_header else 0,
-        ).assign(Start=lambda x: x["End"] - 1, Score=1.0)
+        ).assign(Start=lambda x: x["End"] - 1)
     df["Chromosome"] = (
         df["Chromosome"].str.replace("chrM", "MT").str.replace("chr", "")
     )
@@ -90,7 +92,7 @@ def annotate_with_feature(
     df_feature: pd.DataFrame,
     nb_cpu=8,
     type_ratios=None,
-    bin_number=None,
+    bin_number=100,
     annot_name=False,
     keep_all=False,
     by_strand=False,
@@ -163,10 +165,23 @@ def annotate_with_feature(
     if annot_name:
         df["Name"] = df["Name_ref"]
 
-    if bin_number is not None:
-        y, x = np.histogram(
-            df["d_norm"], bins=bin_number, weights=df["Score"], range=(0, 1)
-        )
+    weight_col = [c for c in df.columns if c.startswith("Weight_")]
+
+    if len(weight_col) > 0:
+        for c in weight_col:
+            y, x = np.histogram(
+                df["d_norm"], bins=bin_number, weights=df[c], range=(0, 1)
+            )
+            x = (x[1:] + x[:-1]) / 2
+            df.attrs.update(
+                {
+                    "bin_number": bin_number,
+                    "bin_x": list(np.round(x, 6)),
+                    "bin_y" + c.replace("Weight_", ""): list(y),
+                }
+            )
+    else:
+        y, x = np.histogram(df["d_norm"], bins=bin_number, range=(0, 1))
         x = (x[1:] + x[:-1]) / 2
         df.attrs.update(
             {

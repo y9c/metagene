@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 
+import asciichartpy
 import rich_click as click
 from rich.logging import RichHandler
 
@@ -39,15 +40,23 @@ logger.propagate = False
     "--with-header", "-H", is_flag=True, help="Input file with header."
 )
 @click.option(
-    "--columns",
+    "--meta-columns",
     "-c",
     type=str,
-    default="1,2,3,5,6",
-    help="Input columns, [Chromosome,Start,End,Score,Strand], "
+    default="1,2,3,6",
+    help="Input columns"
     "[Chromosome,Start,End,Strand] or [Chromosome,Site,Strand]",
 )
 @click.option(
-    "--bin-number", "-b", type=int, default=None, help="Number of bins."
+    "--weight-columns",
+    "-w",
+    type=str,
+    default="5",
+    help="Input columns"
+    "[Chromosome,Start,End,Strand] or [Chromosome,Site,Strand]",
+)
+@click.option(
+    "--bin-number", "-b", type=int, default=100, help="Number of bins."
 )
 @click.option(
     "--features", "-f", type=click.Path(exists=True), help="Freature file."
@@ -74,7 +83,8 @@ def cli(
     input,
     output,
     with_header,
-    columns,
+    meta_columns,
+    weight_columns,
     bin_number,
     features,
     threads,
@@ -102,7 +112,10 @@ def cli(
             df_feature = parse_features(features)
     logger.info("Loading input data.")
     df_input = parse_input(
-        input, with_header, col_index=[int(x) - 1 for x in columns.split(",")]
+        input,
+        with_header,
+        meta_col_index=[int(x) - 1 for x in meta_columns.split(",")],
+        weight_col_index=[int(x) - 1 for x in weight_columns.split(",")],
     )
     logger.info("Annotating input data using parsed feature data.")
     df_output = annotate_with_feature(
@@ -131,11 +144,14 @@ def cli(
     logger.info("Saving annotated output data.")
     df_output.to_csv(output, sep="\t", index=False, header=False)
 
-    if "bin_y" in df_output.attrs:
-        import asciichartpy
+    logger.info("Plotting the distribution of the reuslts.")
 
-        logger.info("Plotting the distribution of the reuslts.")
-        chart = asciichartpy.plot(
-            df_output.attrs["bin_y"], {"height": 10, "format": "{:8.2f}"}
-        )
-        logger.info(chart)
+    chart = asciichartpy.plot(
+        [
+            df_output.attrs[c]
+            for c in df_output.attrs.keys()
+            if c.startswith("bin_y")
+        ],
+        {"height": 10, "format": "{:8.2f}"},
+    )
+    logger.info(chart)
