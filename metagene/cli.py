@@ -14,6 +14,7 @@ import os
 import sys
 
 import asciichartpy
+import pandas as pd
 import rich_click as click
 from rich.logging import RichHandler
 
@@ -37,14 +38,26 @@ logger.propagate = False
 )
 @click.option("--output", "-o", default="-", help="Output file.")
 @click.option(
+    "--output-score",
+    "-O",
+    default=None,
+    help="Output metagene plot data into file.",
+)
+@click.option(
     "--with-header", "-H", is_flag=True, help="Input file with header."
+)
+@click.option(
+    "--plot-figure",
+    "-p",
+    is_flag=True,
+    help="Plot metagene figure. [Not supported yet.]",
 )
 @click.option(
     "--meta-columns",
     "-c",
     type=str,
     default="1,2,3,6",
-    help="Input columns"
+    help="Input columns index for meta data. "
     "[Chromosome,Start,End,Strand] or [Chromosome,Site,Strand]",
 )
 @click.option(
@@ -52,8 +65,7 @@ logger.propagate = False
     "-w",
     type=str,
     default="5",
-    help="Input columns"
-    "[Chromosome,Start,End,Strand] or [Chromosome,Site,Strand]",
+    help="Input columns index for scores.",
 )
 @click.option(
     "--bin-number", "-b", type=int, default=100, help="Number of bins."
@@ -82,7 +94,9 @@ logger.propagate = False
 def cli(
     input,
     output,
+    output_score,
     with_header,
+    plot_figure,
     meta_columns,
     weight_columns,
     bin_number,
@@ -143,6 +157,16 @@ def cli(
         print(f"# {k}: {v}", file=output)
     logger.info("Saving annotated output data.")
     df_output.to_csv(output, sep="\t", index=False, header=False)
+
+    if output_score:
+        pd.DataFrame(
+            [df_output.attrs["bin_x"]]
+            + [
+                df_output.attrs[c]
+                for c in df_output.attrs.keys()
+                if c.startswith("bin_y")
+            ]
+        ).T.to_csv(output_score, sep="\t", index=False, header=False)
 
     logger.info("Plotting the distribution of the reuslts.")
 
