@@ -92,6 +92,44 @@ def parse_input(
     return df
 
 
+def cal_bin_means(data, weights, num_bins=100, bin_range=(0, 1), suffix=""):
+    data = np.asarray(data)
+    # Generate the bin edges
+    bins = np.linspace(bin_range[0], bin_range[1], num_bins + 1)
+
+    # Initialize an array to hold the sum of the values in each bin
+    bin_sums = np.zeros(num_bins)
+
+    # Initialize an array to hold the count of the number of values in each bin
+    bin_counts = np.zeros(num_bins)
+
+    # Calculate which bin each data point falls into
+    bin_indices = np.digitize(data, bins) - 1
+
+    # Update the bin_sums and bin_counts arrays
+    for w, b in zip(weights, bin_indices):
+        if b >= 0 and b < num_bins:
+            bin_sums[b] += w
+            bin_counts[b] += 1
+
+    # Calculate the mean for each bin
+    bin_means = np.divide(
+        bin_sums,
+        bin_counts,
+        out=np.zeros_like(bin_sums),
+        where=bin_counts != 0,
+    )
+
+    df = pd.DataFrame(
+        {"count": bin_counts, "sum": bin_sums, "mean": bin_means},
+        index=(bins[1:] + bins[:-1]) / 2,
+    )
+    # df["count"] = df["count"].astype("Int64")
+    if suffix:
+        df.columns = [c + suffix for c in df.columns]
+    return df
+
+
 def annotate_with_feature(
     df_input: pd.DataFrame,
     df_feature: pd.DataFrame,
@@ -101,7 +139,7 @@ def annotate_with_feature(
     annot_name=False,
     keep_all=False,
     by_strand=False,
-) -> pd.DataFrame:
+) -> (pd.DataFrame, pd.DataFrame):
     df = (
         pr.PyRanges(df_input)
         .join(
@@ -111,10 +149,18 @@ def annotate_with_feature(
             nb_cpu=nb_cpu,
             strandedness="same" if by_strand else None,
         )
-        .df.groupby(
+        .df
+    )
+
+    # df.groupby(
+    #     ["Chromosome", "Start", "End"], as_index=False, group_keys=False
+    # ).apply(lambda x: x.nlargest(1, "Overlap"))
+    df = (
+        df.sort_values(by=["Overlap"], ascending=False)
+        .groupby(
             ["Chromosome", "Start", "End"], as_index=False, group_keys=False
         )
-        .apply(lambda x: x.nlargest(1, "Overlap"))
+        .head(1)
         .assign(
             d=lambda x: np.where(
                 x.Strand_ref == "+",
@@ -172,32 +218,29 @@ def annotate_with_feature(
 
     weight_col = [c for c in df.columns if c.startswith("Weight_")]
 
+    df_list = []
     if len(weight_col) > 0:
         for c in weight_col:
-            y, x = np.histogram(
-                df["d_norm"],
-                bins=bin_number,
-                weights=df[c].fillna(0),
-                range=(0, 1),
-            )
-            x = (x[1:] + x[:-1]) / 2
-            df.attrs.update(
-                {
-                    "bin_number": bin_number,
-                    "bin_x": list(np.round(x, 6)),
-                    "bin_y_" + c.replace("Weight_", ""): list(y),
-                }
+            df_list.append(
+                cal_bin_means(
+                    df["d_norm"],
+                    weights=df[c].fillna(0),
+                    # weights=np.ones(len(df["d_norm"])),
+                    num_bins=100,
+                    bin_range=(0, 1),
+                    suffix="_" + c.replace("Weight_", ""),
+                )
             )
     else:
-        y, x = np.histogram(df["d_norm"], bins=bin_number, range=(0, 1))
-        x = (x[1:] + x[:-1]) / 2
-        df.attrs.update(
-            {
-                "bin_number": bin_number,
-                "bin_x": list(np.round(x, 6)),
-                "bin_y": list(y),
-            }
+        df_list.append(
+            cal_bin_means(
+                df["d_norm"],
+                weights=np.ones(len(df["d_norm"])),
+                num_bins=100,
+                bin_range=(0, 1),
+            )
         )
+    df_score = pd.concat(df_list, axis=1)
 
     if not keep_all:
         df = df.loc[
@@ -206,7 +249,8 @@ def annotate_with_feature(
     # Use attrs property to store metadata in dataframe
     # DataFrame.attrs is an experimental feature, use be used with pandas >= 1.0
     df.attrs.update(type2ratio)
-    return df
+    df_score.attrs.update(type2ratio)
+    return df, df_score
 
 
 if __name__ == "__main__":

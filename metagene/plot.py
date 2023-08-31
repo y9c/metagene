@@ -12,10 +12,13 @@ import pandas as pd
 
 
 def plot_metagene(df, info):
-    df = df.set_index("x")
     fig, ax = plt.subplots(figsize=(3.5, 2), dpi=300)
     for c in df.columns:
-        n = "All" if df.columns[0] == "y" else c.split("_", 1)[1]
+        n = (
+            c.split("_", 1)[1]
+            if len(set([c.split("_", 1)[0] for c in df.columns])) == 1
+            else c
+        )
         ax.plot(df.index, df[c], lw=0.8, label=n)
         ax.fill_between(df.index, df[c], alpha=0.1)
 

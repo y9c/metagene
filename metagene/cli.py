@@ -114,7 +114,6 @@ def cli(
     threads,
     buildin_features,
 ):
-
     if features is None:
         logger.info("Parsing buildin features.")
         df_feature = parse_features(
@@ -148,7 +147,7 @@ def cli(
         weight_col_name=[x for x in weight_names.split(",") if len(x) > 0],
     )
     logger.info("Annotating input data using parsed feature data.")
-    df_output = annotate_with_feature(
+    df_output, df_score = annotate_with_feature(
         df_input, df_feature, bin_number=bin_number, nb_cpu=threads
     )
 
@@ -174,35 +173,25 @@ def cli(
     logger.info("Saving annotated output data.")
     df_output.to_csv(output, sep="\t", index=False, header=False)
 
-    if output_score:
-        df_bins = pd.DataFrame(
-            [df_output.attrs["bin_x"]]
-            + [
-                df_output.attrs[c]
-                for c in df_output.attrs.keys()
-                if c.startswith("bin_y")
-            ],
-            index=["x"]
-            + [
-                c.split("_", 1)[1]
-                for c in df_output.attrs.keys()
-                if c.startswith("bin_y")
-            ],
-        ).T
-        df_bins.to_csv(output_score, sep="\t", index=False, header=True)
+    logger.info("Saving annotated score data.")
+    df_score.to_csv(output_score, sep="\t", index=True, header=True)
 
     logger.info("Plotting the distribution of the reuslts.")
 
     chart = asciichartpy.plot(
         [
-            df_output.attrs[c]
-            for c in df_output.attrs.keys()
-            if c.startswith("bin_y")
+            list(df_score[c].values)
+            for c in df_score.columns
+            if c.startswith("sum")
         ],
         {"height": 10, "format": "{:8.2f}"},
     )
     logger.info(chart)
     if output_figure:
-        fig = plot_metagene(df_bins, df_output.attrs)
+        fig = plot_metagene(
+            df_score[[c for c in df_score.columns if c.startswith("sum")]],
+            # df_score / df_score.max(),
+            df_output.attrs,
+        )
         fig.savefig(output_figure, bbox_inches="tight")
         logger.info(f"Metagene plot saved to {output_figure}")
