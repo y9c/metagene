@@ -52,6 +52,13 @@ logger.propagate = False
     help="Output metagene plot data into file.",
 )
 @click.option(
+    "--plot-yaxis",
+    "-y",
+    default="sum",
+    type=click.Choice(["sum", "count", "mean"]),
+    help="y axis of the plot.",
+)
+@click.option(
     "--with-header", "-H", is_flag=True, help="Input file with header."
 )
 @click.option(
@@ -105,6 +112,7 @@ def cli(
     output,
     output_score,
     output_figure,
+    plot_yaxis,
     with_header,
     meta_columns,
     weight_columns,
@@ -182,14 +190,16 @@ def cli(
         [
             list(df_score[c].values)
             for c in df_score.columns
-            if c.startswith("sum")
+            if c.startswith(plot_yaxis)
         ],
         {"height": 10, "format": "{:8.2f}"},
     )
     logger.info(chart)
     if output_figure:
         fig = plot_metagene(
-            df_score[[c for c in df_score.columns if c.startswith("sum")]],
+            df_score[
+                [c for c in df_score.columns if c.startswith(plot_yaxis)]
+            ],
             # df_score / df_score.max(),
             df_output.attrs,
         )
