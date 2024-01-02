@@ -14,7 +14,6 @@ import os
 import sys
 
 import asciichartpy
-import pandas as pd
 import rich_click as click
 from rich.logging import RichHandler
 from rich.pretty import pretty_repr
