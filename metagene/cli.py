@@ -143,6 +143,10 @@ def cli(
     df_output, df_score = annotate_with_feature(
         df_input, df_feature, bin_number=bin_number, nb_cpu=threads
     )
+    # report input records and annotated records number
+    logging.info(
+        f"Input records: {df_input.shape[0]}, Annotated records: {df_output.shape[0]}"
+    )
 
     if output == "-":
         output = sys.stdout
@@ -165,7 +169,8 @@ def cli(
     df_output.to_csv(output, sep="\t", index=False, header=False)
 
     logger.info("Saving annotated score data.")
-    df_score.to_csv(output_score, sep="\t", index=True, header=True)
+    if output_score:
+        df_score.to_csv(output_score, sep="\t", index=True, header=True)
 
     logger.info("Plotting the distribution of the reuslts.")
 

@@ -126,9 +126,9 @@ def cal_bin_means(data, weights, num_bins=100, bin_range=(0, 1), suffix=""):
 def annotate_with_feature(
     df_input: pd.DataFrame,
     df_feature: pd.DataFrame,
+    bin_number=100,
     nb_cpu=8,
     type_ratios=None,
-    bin_number=100,
     annot_name=False,
     keep_all=False,
     by_strand=False,
@@ -213,7 +213,7 @@ def annotate_with_feature(
                     df["d_norm"],
                     weights=df[c].fillna(0),
                     # weights=np.ones(len(df["d_norm"])),
-                    num_bins=100,
+                    num_bins=bin_number,
                     bin_range=(0, 1),
                     suffix="_" + c.replace("Weight_", ""),
                 )
@@ -223,7 +223,7 @@ def annotate_with_feature(
             cal_bin_means(
                 df["d_norm"],
                 weights=np.ones(len(df["d_norm"])),
-                num_bins=100,
+                num_bins=bin_number,
                 bin_range=(0, 1),
             )
         )
