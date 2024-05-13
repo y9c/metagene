@@ -24,9 +24,7 @@ for (t, s), g in df.groupby(["Transcript stable ID version", "Strand"]):
     if s == "+":
         for _, r in g.iloc[:, [0, 1, 2, 3, 4]].iterrows():
             chrom, exon_start, exon_end, coding_start, coding_end = r.values
-            coding_start = (
-                np.nan if np.isnan(coding_start) else int(coding_start)
-            )
+            coding_start = np.nan if np.isnan(coding_start) else int(coding_start)
             coding_end = np.nan if np.isnan(coding_end) else int(coding_end)
             if f == -1 and coding_start >= exon_start:
                 if coding_start > exon_start:
@@ -58,9 +56,7 @@ for (t, s), g in df.groupby(["Transcript stable ID version", "Strand"]):
     else:
         for _, r in g.iloc[:, [0, 1, 2, 3, 4]].iterrows():
             chrom, exon_start, exon_end, coding_start, coding_end = r.values
-            coding_start = (
-                np.nan if np.isnan(coding_start) else int(coding_start)
-            )
+            coding_start = np.nan if np.isnan(coding_start) else int(coding_start)
             coding_end = np.nan if np.isnan(coding_end) else int(coding_end)
             if f == -1 and coding_end <= exon_end:
                 if coding_end < exon_end:

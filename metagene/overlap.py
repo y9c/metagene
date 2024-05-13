@@ -15,9 +15,7 @@ import pyranges as pr
 
 
 def parse_features(feature_file_name: str) -> pd.DataFrame:
-    if feature_file_name.endswith(".bed") or feature_file_name.endswith(
-        ".bed.gz"
-    ):
+    if feature_file_name.endswith(".bed") or feature_file_name.endswith(".bed.gz"):
         df = pd.read_csv(
             feature_file_name,
             sep="\t",
@@ -31,8 +29,7 @@ def parse_features(feature_file_name: str) -> pd.DataFrame:
     )
     df["len_of_feature"] = df.groupby("Name")["len_of_window"].transform("sum")
     df["frac_of_feature"] = (
-        df.groupby("Name")["len_of_window"].transform("cumsum")
-        - df["len_of_window"]
+        df.groupby("Name")["len_of_window"].transform("cumsum") - df["len_of_window"]
     ) / df["len_of_feature"]
     df[["Transcript", "Type"]] = df["Name"].str.split(":", expand=True)
     return df
@@ -67,9 +64,7 @@ def parse_input(
             skiprows=1 if with_header else 0,
         )
     elif len(meta_col_index) == 3:
-        col_name_dict = dict(
-            zip(meta_col_index, ["Chromosome", "End", "Strand"])
-        )
+        col_name_dict = dict(zip(meta_col_index, ["Chromosome", "End", "Strand"]))
         col_type_dict = dict(zip(meta_col_index, [str, int, str]))
         for i, w in enumerate(weight_col_index):
             col_name_dict[w] = "Weight_" + (
@@ -86,9 +81,7 @@ def parse_input(
             comment="#",
             skiprows=1 if with_header else 0,
         ).assign(Start=lambda x: x["End"] - 1)
-    df["Chromosome"] = (
-        df["Chromosome"].str.replace("chrM", "MT").str.replace("chr", "")
-    )
+    df["Chromosome"] = df["Chromosome"].str.replace("chrM", "MT").str.replace("chr", "")
     return df
 
 
@@ -157,9 +150,7 @@ def annotate_with_feature(
     # ).apply(lambda x: x.nlargest(1, "Overlap"))
     df = (
         df.sort_values(by=["Overlap"], ascending=False)
-        .groupby(
-            ["Chromosome", "Start", "End"], as_index=False, group_keys=False
-        )
+        .groupby(["Chromosome", "Start", "End"], as_index=False, group_keys=False)
         .head(1)
         .assign(
             d=lambda x: np.where(
@@ -182,9 +173,7 @@ def annotate_with_feature(
     else:
         # type to ratio is differ for different input bins
         s = (
-            df_feature[
-                df_feature["Transcript"].isin(df["Transcript"].unique())
-            ]
+            df_feature[df_feature["Transcript"].isin(df["Transcript"].unique())]
             .groupby(["Transcript", "Type"])["len_of_window"]
             .sum()
             .reset_index()
@@ -208,9 +197,7 @@ def annotate_with_feature(
         np.where(
             df["Type"] == "CDS",
             df["d"] * type2ratio["CDS"] + type2ratio["5UTR"],
-            df["d"] * type2ratio["3UTR"]
-            + type2ratio["5UTR"]
-            + type2ratio["CDS"],
+            df["d"] * type2ratio["3UTR"] + type2ratio["5UTR"] + type2ratio["CDS"],
         ),
     )
     if annot_name:
@@ -243,9 +230,7 @@ def annotate_with_feature(
     df_score = pd.concat(df_list, axis=1)
 
     if not keep_all:
-        df = df.loc[
-            :, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]
-        ]
+        df = df.loc[:, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]]
     # Use attrs property to store metadata in dataframe
     # DataFrame.attrs is an experimental feature, use be used with pandas >= 1.0
     df.attrs.update(type2ratio)

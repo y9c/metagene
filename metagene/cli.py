@@ -34,9 +34,7 @@ logger.propagate = False
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"]),
 )
-@click.option(
-    "--input", "-i", type=click.Path(exists=True), help="Input file."
-)
+@click.option("--input", "-i", type=click.Path(exists=True), help="Input file.")
 @click.option("--output", "-o", default="-", help="Output file.")
 @click.option(
     "--output-score",
@@ -57,9 +55,7 @@ logger.propagate = False
     type=click.Choice(["sum", "count", "mean"]),
     help="y axis of the plot.",
 )
-@click.option(
-    "--with-header", "-H", is_flag=True, help="Input file with header."
-)
+@click.option("--with-header", "-H", is_flag=True, help="Input file with header.")
 @click.option(
     "--meta-columns",
     "-c",
@@ -82,15 +78,9 @@ logger.propagate = False
     default="",
     help="Input columns names for scores.",
 )
-@click.option(
-    "--bin-number", "-b", type=int, default=100, help="Number of bins."
-)
-@click.option(
-    "--features", "-f", type=click.Path(exists=True), help="Freature file."
-)
-@click.option(
-    "--threads", "-t", type=int, default=8, help="Number of threads."
-)
+@click.option("--bin-number", "-b", type=int, default=100, help="Number of bins.")
+@click.option("--features", "-f", type=click.Path(exists=True), help="Freature file.")
+@click.option("--threads", "-t", type=int, default=8, help="Number of threads.")
 @click.option(
     "--buildin-features",
     "-F",
@@ -145,12 +135,8 @@ def cli(
     df_input = parse_input(
         input,
         with_header,
-        meta_col_index=[
-            int(x) - 1 for x in meta_columns.split(",") if len(x) > 0
-        ],
-        weight_col_index=[
-            int(x) - 1 for x in weight_columns.split(",") if len(x) > 0
-        ],
+        meta_col_index=[int(x) - 1 for x in meta_columns.split(",") if len(x) > 0],
+        weight_col_index=[int(x) - 1 for x in weight_columns.split(",") if len(x) > 0],
         weight_col_name=[x for x in weight_names.split(",") if len(x) > 0],
     )
     logger.info("Annotating input data using parsed feature data.")
@@ -171,9 +157,7 @@ def cli(
             logger.info(f"{k}: " + pretty_repr(v, max_length=10))
         else:
             logger.info(f"{k}: {v}")
-    logger.info(
-        ", and they are also written into the comment lines (#) of the output."
-    )
+    logger.info(", and they are also written into the comment lines (#) of the output.")
 
     for k, v in df_output.attrs.items():
         print(f"# {k}: {v}", file=output)
@@ -196,9 +180,7 @@ def cli(
     logger.info(chart)
     if output_figure:
         fig = plot_metagene(
-            df_score[
-                [c for c in df_score.columns if c.startswith(plot_yaxis)]
-            ],
+            df_score[[c for c in df_score.columns if c.startswith(plot_yaxis)]],
             # df_score / df_score.max(),
             df_output.attrs,
         )

@@ -117,9 +117,7 @@ def tidy_record(group_df):
             pl.Series("seqname", col_chr, dtype=pl.Utf8),
             pl.Series("start", col_start, dtype=pl.Int64),
             pl.Series("end", col_end, dtype=pl.Int64),
-            pl.Series(
-                "type", [name + ":" + i for i in col_type], dtype=pl.Utf8
-            ),
+            pl.Series("type", [name + ":" + i for i in col_type], dtype=pl.Utf8),
             pl.Series("strand", [strand] * len(col_type), dtype=pl.Utf8),
         ]
     )
@@ -142,9 +140,7 @@ def add_order(group_df):
     # names=["Chromosome", "Start", "End", "Name", "Index", "Strand"],
     return pl.DataFrame(
         [
-            group_df.select(pl.col("seqname").alias("Chromosome")).to_series(
-                0
-            ),
+            group_df.select(pl.col("seqname").alias("Chromosome")).to_series(0),
             group_df.select(
                 pl.col("start").alias("Start").cast(pl.Int64, strict=False)
             ).to_series(0),
@@ -169,7 +165,8 @@ def gtf_to_bed(gtf_file, bed_file):
     df = (
         read_gtf(gtf_file, result_type="polars")
         .filter(
-            pl.col("feature").cast(pl.Utf8)
+            pl.col("feature")
+            .cast(pl.Utf8)
             # .is_in(["start_codon", "CDS", "stop_codon", "exon"])
             .is_in(["five_prime_utr", "CDS", "three_prime_utr"])
         )
