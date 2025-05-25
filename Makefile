@@ -1,11 +1,16 @@
-.PHONY: init test
+.PHONY: init test demo
 
 init:
-	peotry install --no-dev
+	uv venv
+	uv pip install .
 
 dev:
-	peotry install
-	peotry shell
+	uv venv
+	uv pip install .[dev]
+	@echo "Virtual environment created/updated. Activate it by running: source .venv/bin/activate"
 
 test:
-	python -m unittest test.test_basic
+	uv run python -m unittest test.test_basic
+
+demo:
+	uv run python test/test_demo.py

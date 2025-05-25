@@ -1,3 +1,15 @@
+# macOS files
+.DS_Store
+
+# VSCode settings
+.vscode/
+
+# UV lock file
+uv.lock
+
+# ruff ignore file
+.ruff_cache
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -105,3 +117,15 @@ venv.bak/
 
 # directory for temp file
 temp/
+
+# Test output files
+test/output_*.tsv
+test/output_*.png
+test/output_*.pdf
+test/output_*.svg
+test/metagene_*.png
+test/metagene_*.pdf
+test/metagene_*.svg
+test/test_output_*.tsv
+test/test_plot_*.png
+test/.*.parquet
