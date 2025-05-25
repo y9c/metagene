@@ -1,44 +1,54 @@
-# Metagene Repository - Final Clean Structure
+# Metagene Repository - Clean Production Structure
 
 ## 📁 Repository Overview
 
-The metagene repository has been successfully migrated to PyRanges v1 and reorganized with a clean, professional structure.
+The metagene repository is now production-ready with version 0.0.1, featuring a clean structure, automatic reference downloading, and comprehensive CLI interface.
 
 ## 🏗️ Directory Structure
 
 ```
 metagene/
-├── README.md                    # Project documentation
-├── pyproject.toml              # Project configuration and dependencies
+├── README.md                    # Comprehensive project documentation
+├── pyproject.toml              # Project configuration (v0.0.1)
 ├── Makefile                    # Build and development commands
-├── uv.lock                     # Dependency lock file
+├── uv.lock                     # Dependency lock file (gitignored)
+│
+├── .github/                    # GitHub Actions
+│   └── workflows/
+│       └── publish.yml         # PyPI publishing workflow
 │
 ├── metagene/                   # Main package
-│   ├── __init__.py            # Package initialization with legacy compatibility
-│   ├── gtf.py                 # GTF file processing (PyRanges v1 compatible)
-│   ├── io.py                  # Input/output operations
+│   ├── __init__.py            # Clean API exports
+│   ├── gtf.py                 # GTF file processing (PyRanges v1)
+│   ├── io.py                  # I/O operations with auto-download
 │   ├── overlap.py             # Genomic overlap analysis
-│   ├── analysis.py            # Main analysis pipeline
+│   ├── annotation.py          # Transcript annotation utilities
 │   ├── plotting.py            # Visualization functions
-│   ├── cli.py                 # Command-line interface
-│   └── annotation.py          # Annotation utilities
+│   ├── cli.py                 # Rich CLI with progress bars
+│   ├── download.py            # Reference download system
+│   ├── config.py              # Configuration and built-in references
+│   └── utils.py               # Utility functions
 │
 ├── test/                      # Test files and example data
 │   ├── __init__.py
-│   ├── test_basic.py          # Basic functionality tests
-│   ├── test_demo.py           # Demo test (needs updating)
-│   ├── test_demo_updated.py   # Updated demo test (working)
+│   ├── test_demo.py           # Complete workflow demo
+│   ├── test_builtin.py        # Built-in reference demo
 │   ├── example.gtf.gz         # Test GTF file
-│   ├── example.bed.parquet    # Test feature file
 │   ├── sites.tsv.gz          # Test sites data
-│   └── plot.ipynb            # Jupyter notebook for plotting
+│   ├── sites.bed             # Test BED data
+│   └── output_*.{tsv,png}    # Test outputs (gitignored)
 │
-├── docs/                      # Documentation
-│   ├── MIGRATION_COMPLETE.md  # Migration completion documentation
-│   ├── FINAL_SUCCESS.md       # Final success summary
-│   ├── notes.md              # Development notes
-│   ├── fig_metagene.svg      # Example SVG plot
-│   └── metagene_demo_updated.png # Example PNG plot
+├── scripts/                   # Development scripts
+│   ├── README.md             # Script documentation
+│   ├── process_gtf_to_parquet.py # GTF processing utility
+│   ├── species_mapping_template.py # Species mapping
+│   └── test_gtf_processing.py # GTF processing tests
+│
+└── docs/                     # Documentation
+    ├── REPOSITORY_STRUCTURE.md # This file
+    ├── metagene_demo_*.png    # Example plots
+    └── fig_metagene.svg      # Vector example
+```
 │
 └── legacy/                    # Deprecated code (for reference)
     ├── README.md              # Legacy code documentation
