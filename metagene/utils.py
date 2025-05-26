@@ -9,8 +9,7 @@
 import os
 import logging
 from pathlib import Path
-from typing import Optional, Union
-
+from typing import Optional, Union, List
 
 def setup_logger(name: str = "metagene", level: int = logging.INFO) -> logging.Logger:
     """
@@ -40,6 +39,8 @@ def setup_logger(name: str = "metagene", level: int = logging.INFO) -> logging.L
     logger.propagate = False  # Prevent double logging
     return logger
 
+# Initialize logger
+logger = setup_logger()
 
 def get_cache_dir(app_name: str = "metagene") -> Path:
     """
@@ -129,3 +130,44 @@ def format_file_size(size_bytes: int) -> str:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
     return f"{size_bytes:.1f} PB" 
+
+
+def print_analysis_summary(params: dict) -> None:
+    """Print a summary of analysis parameters.
+    
+    Args:
+        params: Dictionary containing analysis parameters
+    """
+    logger.info("\nAnalysis Summary:")
+    logger.info("------------------")
+    logger.info(f"Input file: {params['input_file']}")
+    logger.info(f"Output file: {params['output_file']}")
+    
+    if params.get('output_score'):
+        logger.info(f"Score output file: {params['output_score']}")
+    if params.get('output_figure'):
+        logger.info(f"Figure output file: {params['output_figure']}")
+    if params.get('reference'):
+        logger.info(f"Reference: {params['reference']}")
+    if params.get('gtf'):
+        logger.info(f"GTF file: {params['gtf']}")
+    
+    logger.info(f"Region: {params.get('region', 'N/A')}")
+    logger.info(f"Number of bins: {params.get('bin_number', params.get('bins', 'N/A'))}")
+    logger.info(f"Has header: {params.get('with_header', 'N/A')}")
+    logger.info(f"Meta columns: {params.get('meta_columns', 'N/A')}")
+    logger.info(f"Weight columns: {params.get('weight_columns', 'N/A')}")
+    
+    if params.get('weight_names'):
+        logger.info(f"Weight names: {params['weight_names']}")
+    
+    logger.info(f"Score transform: {params.get('score_transform', 'N/A')}")
+    logger.info(f"Normalize: {params.get('normalize', 'N/A')}")
+    
+    if params.get('plot'):
+        logger.info("\nPlot Settings:")
+        if params.get('plot_dir'):
+            logger.info(f"Plot directory: {params['plot_dir']}")
+        logger.info(f"Plot format: {params.get('plot_format', 'N/A')}")
+    
+    logger.info("------------------")

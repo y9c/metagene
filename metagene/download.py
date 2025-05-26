@@ -50,7 +50,14 @@ class Emojis:
 
 def list_references(console) -> None:
     """List available built-in references with Rich formatting and emojis."""
-    console.print(f"\n[bold cyan]{Emojis.DNA} Available Built-in References:[/bold cyan]\n")
+    # Get cache directory to check downloaded files
+    cache_dir = get_cache_dir()
+    
+    # Get list of actually cached files
+    cached_files = {f.name for f in cache_dir.glob("*.parquet")} if cache_dir.exists() else set()
+    
+    console.print(f"\n[bold cyan]{Emojis.DNA} Available Built-in References:[/bold cyan]")
+    console.print(f"[dim]{Emojis.FOLDER} Cache directory: {cache_dir}[/dim]\n")
     
     # Group by species with emojis
     species_groups = {}
@@ -67,6 +74,10 @@ def list_references(console) -> None:
     }
     
     for ref_name, ref_info in BUILTIN_REFERENCES.items():
+        # Check if reference is downloaded by looking for the actual file in cache
+        expected_file = f"{ref_name}.parquet"
+        status_emoji = Emojis.CHECK if expected_file in cached_files else Emojis.CROSS
+        
         # Classify by species with better logic
         if "Human" in ref_info["description"] or any(x in ref_name for x in ["GRCh", "hg"]):
             species = "Human"
@@ -89,43 +100,24 @@ def list_references(console) -> None:
         
         if species not in species_groups:
             species_groups[species] = []
-        species_groups[species].append((ref_name, ref_info["description"]))
+        species_groups[species].append((ref_name, ref_info["description"], status_emoji))
     
     # Print organized by species with emojis
     for species in ["Human", "Mouse", "Zebrafish", "Fruit Fly", "Worm", "Yeast", "Arabidopsis", "Rice", "Other"]:
         if species in species_groups:
             emoji = species_emojis.get(species, "🧬")
             console.print(f"[bold yellow]{emoji} {species}:[/bold yellow]")
-            for ref_name, description in sorted(species_groups[species]):
-                console.print(f"  [green]{ref_name:15}[/green] - {description}")
+            for ref_name, description, status in sorted(species_groups[species]):
+                status_color = "green" if status == Emojis.CHECK else "red"
+                console.print(f"  [{status_color}]{status}[/{status_color}] [green]{ref_name:15}[/green] - {description}")
             console.print()
     
-    console.print(f"[dim]{Emojis.INFO} Total: {len(BUILTIN_REFERENCES)} references available[/dim]")
+    # Count downloaded and total references
+    total_refs = len(BUILTIN_REFERENCES)
+    downloaded_refs = len(cached_files)
+    
+    console.print(f"[dim]{Emojis.INFO} Total: {total_refs} references available ({downloaded_refs} downloaded)[/dim]")
     console.print(f"[dim]{Emojis.DOWNLOAD} Use --download <reference> to download a specific reference[/dim]")
-
-def download_reference_cli(download: str, console) -> None:
-    """Download references with Rich formatting for CLI."""
-    if download.lower() == "all":
-        console.print("[bold cyan]Downloading all references...[/bold cyan]")
-        for ref_name in BUILTIN_REFERENCES.keys():
-            console.print(f"Downloading {ref_name}...")
-            try:
-                download_references(ref_name)
-                console.print(f"[green]✓[/green] Downloaded {ref_name}")
-            except Exception as e:
-                console.print(f"[red]✗[/red] Failed to download {ref_name}: {e}")
-    else:
-        if download in BUILTIN_REFERENCES:
-            console.print(f"[bold cyan]Downloading {download}...[/bold cyan]")
-            try:
-                download_references(download)
-                console.print(f"[green]✓[/green] Downloaded {download}")
-            except Exception as e:
-                console.print(f"[red]✗[/red] Failed to download {download}: {e}")
-        else:
-            console.print(f"[red]✗[/red] Unknown reference: {download}")
-            console.print(f"Available references: {list(BUILTIN_REFERENCES.keys())}")
-            console.print("Use --list to see all available references")
 
 def download_references(species: str, silent: bool = False) -> None:
     """

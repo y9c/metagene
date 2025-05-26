@@ -19,6 +19,7 @@ def load_sites(
     input_file_name: str,
     with_header: bool = False,
     meta_col_index: List[int] = None,
+    separator: str = "\t",
 ) -> pr.PyRanges:
     """
     Load genomic sites from a file using Polars only.
@@ -27,7 +28,7 @@ def load_sites(
         df_input: Polars DataFrame with input site information
         df_meta: Polars DataFrame with meta information
     """
-    df = pl.scan_csv(input_file_name, separator="\t", has_header=with_header)
+    df = pl.scan_csv(input_file_name, separator=separator, has_header=with_header)
     colnames = list(df.collect_schema())
     meta_col_names = [colnames[i] for i in meta_col_index]
     # check if the Chromosome, Start, End, Strand are in the colnames
@@ -39,7 +40,7 @@ def load_sites(
 
     df = pl.scan_csv(
         input_file_name,
-        separator="\t",
+        separator=separator,
         has_header=with_header,
         new_columns=newnames,
         schema_overrides={meta_col_names[0]: pl.Utf8, meta_col_names[-1]: pl.Utf8},

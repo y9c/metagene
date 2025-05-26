@@ -78,22 +78,27 @@ def main():
 
     # Step 4: Normalize feature positions using package function
     logging.info("Step 4: Normalizing feature positions...")
-    final_df, gene_splits = normalize_positions(annotated_df, strategy="median")
-    logging.info(f"Gene splits (5'UTR, CDS, 3'UTR): {gene_splits}")
+    gene_bins, gene_stats, gene_splits = normalize_positions(annotated_df, split_strategy="median", bin_number=100)
+    logging.info(f"Normalized {gene_bins['count'].sum()} positions")
+    logging.info(f"Gene splits:") 
     logging.info(f"  5'UTR: {gene_splits[0]:.3f}")
     logging.info(f"  CDS: {gene_splits[1]:.3f}")
     logging.info(f"  3'UTR: {gene_splits[2]:.3f}")
-    logging.info(f"Normalized {len(final_df)} positions")
+    logging.info(f"Gene stats:")
+    logging.info(f"  Unknown: {gene_stats['None']}")
+    logging.info(f"  5'UTR: {gene_stats['5UTR']}")
+    logging.info(f"  CDS: {gene_stats['CDS']}")
+    logging.info(f"  3'UTR: {gene_stats['3UTR']}")
 
     # Step 5: Generate plot
     logging.info("Step 5: Generating metagene profile plot...")
     output_path = Path(__file__).parent / "metagene_demo_package.png"
-    simple_metagene_plot(final_df, gene_splits, output_path)
+    simple_metagene_plot(gene_bins, gene_splits, output_path)
     logging.info(f"Plot saved to: {output_path}")
 
-    # Step 6: Show summary statistics
-    logging.info("Step 6: Summary statistics...")
-    show_summary_stats(final_df)
+    # # Step 6: Show summary statistics
+    # logging.info("Step 6: Summary statistics...")
+    # show_summary_stats(gene_stats)
 
     logging.info("Metagene Analysis Demo completed successfully!")
 
