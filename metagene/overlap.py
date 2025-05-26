@@ -1,99 +1,45 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright © 2022 Ye Chang yech1990@gmail.com
+# Copyright © 2023 Ye Chang yech1990@gmail.com
 # Distributed under terms of the GNU license.
 #
-# Created: 2022-07-18 22:42
+# Feature Overlap Module - Handles genomic overlap analysis with PyRanges v1
 
 import sys
-
 import numpy as np
 import pandas as pd
-import polars as pl
 import pyranges as pr
+from typing import Optional, Tuple, List, Union
 
 
-def parse_features(feature_file_name: str) -> pd.DataFrame:
-    if feature_file_name.endswith(".bed") or feature_file_name.endswith(".bed.gz"):
-        df = pd.read_csv(
-            feature_file_name,
-            sep="\t",
-            names=["Chromosome", "Start", "End", "Name", "Index", "Strand"],
-            comment="#",
-        )
-    else:
-        df = pl.read_parquet(feature_file_name).to_pandas()
-    df = df.sort_values(["Name", "Index"], ascending=True).assign(
-        len_of_window=lambda x: x["End"] - x["Start"]
-    )
-    df["len_of_feature"] = df.groupby("Name")["len_of_window"].transform("sum")
-    df["frac_of_feature"] = (
-        df.groupby("Name")["len_of_window"].transform("cumsum") - df["len_of_window"]
-    ) / df["len_of_feature"]
-    df[["Transcript", "Type"]] = df["Name"].str.split(":", expand=True)
-    return df
-
-
-def parse_input(
-    input_file_name: str,
-    with_header: bool = False,
-    meta_col_index: list = [0, 1, 2, 5],
-    weight_col_index: list = [4],
-    weight_col_name: list = [],
+def calculate_bin_statistics(
+    data: np.ndarray, 
+    weights: np.ndarray, 
+    num_bins: int = 100, 
+    bin_range: Tuple[float, float] = (0, 1), 
+    suffix: str = ""
 ) -> pd.DataFrame:
-    if len(meta_col_index) == 4:
-        col_name_dict = dict(
-            zip(meta_col_index, ["Chromosome", "Start", "End", "Strand"])
-        )
-        col_type_dict = dict(zip(meta_col_index, [str, int, int, str]))
-        for i, w in enumerate(weight_col_index):
-            col_name_dict[w] = "Weight_" + (
-                weight_col_name[i] if weight_col_name else str(i + 1)
-            )
-            col_type_dict[w] = np.float64
-        col_name_dict = dict(sorted(col_name_dict.items()))
-
-        df = pd.read_csv(
-            input_file_name,
-            sep="\t",
-            usecols=col_name_dict.keys(),
-            names=col_name_dict.values(),
-            dtype={v: col_type_dict[k] for k, v in col_name_dict.items()},
-            comment="#",
-            skiprows=1 if with_header else 0,
-        )
-    elif len(meta_col_index) == 3:
-        col_name_dict = dict(zip(meta_col_index, ["Chromosome", "End", "Strand"]))
-        col_type_dict = dict(zip(meta_col_index, [str, int, str]))
-        for i, w in enumerate(weight_col_index):
-            col_name_dict[w] = "Weight_" + (
-                weight_col_name[i] if weight_col_name else str(i + 1)
-            )
-            col_type_dict[w] = np.float64
-        col_name_dict = dict(sorted(col_name_dict.items()))
-        df = pd.read_csv(
-            input_file_name,
-            sep="\t",
-            usecols=col_name_dict.keys(),
-            names=col_name_dict.values(),
-            dtype={v: col_type_dict[k] for k, v in col_name_dict.items()},
-            comment="#",
-            skiprows=1 if with_header else 0,
-        ).assign(Start=lambda x: x["End"] - 1)
-    df["Chromosome"] = df["Chromosome"].str.replace("chrM", "MT").str.replace("chr", "")
-    return df
-
-
-def cal_bin_means(data, weights, num_bins=100, bin_range=(0, 1), suffix=""):
+    """
+    Calculate binned statistics for metagene analysis.
+    
+    Args:
+        data: Array of normalized positions
+        weights: Array of weights for each position
+        num_bins: Number of bins for analysis
+        bin_range: Range for binning (default 0-1)
+        suffix: Suffix for column names
+    
+    Returns:
+        DataFrame with bin statistics
+    """
     data = np.asarray(data)
+    
     # Generate the bin edges
     bins = np.linspace(bin_range[0], bin_range[1], num_bins + 1)
 
-    # Initialize an array to hold the sum of the values in each bin
+    # Initialize arrays for sums and counts
     bin_sums = np.zeros(num_bins)
-
-    # Initialize an array to hold the count of the number of values in each bin
     bin_counts = np.zeros(num_bins)
 
     # Calculate which bin each data point falls into
@@ -101,7 +47,7 @@ def cal_bin_means(data, weights, num_bins=100, bin_range=(0, 1), suffix=""):
 
     # Update the bin_sums and bin_counts arrays
     for w, b in zip(weights, bin_indices):
-        if b >= 0 and b < num_bins:
+        if 0 <= b < num_bins:
             bin_sums[b] += w
             bin_counts[b] += 1
 
@@ -117,61 +63,72 @@ def cal_bin_means(data, weights, num_bins=100, bin_range=(0, 1), suffix=""):
         {"count": bin_counts, "sum": bin_sums, "mean": bin_means},
         index=(bins[1:] + bins[:-1]) / 2,
     )
-    # df["count"] = df["count"].astype("Int64")
+    
     if suffix:
         df.columns = [c + suffix for c in df.columns]
     return df
 
 
-def annotate_with_feature(
+def annotate_with_features(
     df_input: pd.DataFrame,
     df_feature: pd.DataFrame,
-    bin_number=100,
-    nb_cpu=8,
-    type_ratios=None,
-    annot_name=False,
-    keep_all=False,
-    by_strand=False,
-) -> (pd.DataFrame, pd.DataFrame):
-    df = (
+    bin_number: int = 100,
+    type_ratios: Optional[List[float]] = None,
+    annot_name: bool = False,
+    keep_all: bool = False,
+    by_strand: bool = False,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Annotate input genomic intervals with feature information using PyRanges v1.
+    
+    Args:
+        df_input: Input genomic intervals
+        df_feature: Feature annotations 
+        bin_number: Number of bins for analysis
+        type_ratios: Custom ratios for feature types
+        annot_name: Whether to include feature names
+        keep_all: Whether to keep all columns
+        by_strand: Whether to consider strand
+    
+    Returns:
+        Tuple of (annotated dataframe, binned statistics)
+    """
+    # Perform overlap using PyRanges v1 join_ranges
+    df_joined = (
         pr.PyRanges(df_input)
-        .join(
+        .join_ranges(
             pr.PyRanges(df_feature),
-            suffix="_ref",
-            report_overlap=True,
-            nb_cpu=nb_cpu,
-            strandedness="same" if by_strand else None,
+            report_overlap_column="Overlap",
+            strand_behavior="same" if by_strand else "ignore",
         )
-        .df
     )
 
-    # df.groupby(
-    #     ["Chromosome", "Start", "End"], as_index=False, group_keys=False
-    # ).apply(lambda x: x.nlargest(1, "Overlap"))
+    # Get the best overlap for each input interval
     df = (
-        df.sort_values(by=["Overlap"], ascending=False)
+        df_joined.sort_values(by=["Overlap"], ascending=False)
         .groupby(["Chromosome", "Start", "End"], as_index=False, group_keys=False)
         .head(1)
         .assign(
             d=lambda x: np.where(
-                x.Strand_ref == "+",
-                (np.minimum((x.Start + x.End) // 2, x.End_ref) - x.Start_ref)
+                x.Strand_b == "+",  # Fixed: use _b suffix for PyRanges v1
+                (np.minimum((x.Start + x.End) // 2, x.End_b) - x.Start_b) 
                 / x.len_of_feature
                 + x.frac_of_feature,
-                (x.End_ref - np.maximum((x.Start + x.End) // 2, x.Start_ref))
+                (x.End_b - np.maximum((x.Start + x.End) // 2, x.Start_b))
                 / x.len_of_feature
                 + x.frac_of_feature,
             )
         )
     )
 
+    # Calculate feature type ratios
     if type_ratios is not None:
         type_ratios = np.array(type_ratios)
         type2ratio = dict(
             zip(["5UTR", "CDS", "3UTR"], type_ratios / np.sum(type_ratios))
         )
     else:
-        # type to ratio is differ for different input bins
+        # Calculate ratios from overlapping transcripts
         s = (
             df_feature[df_feature["Transcript"].isin(df["Transcript"].unique())]
             .groupby(["Transcript", "Type"])["len_of_window"]
@@ -181,16 +138,17 @@ def annotate_with_feature(
             .median()
         )
         type2ratio = (s / s.sum()).to_dict()
-        if (
-            "5UTR" not in type2ratio
-            or "CDS" not in type2ratio
-            or "3UTR" not in type2ratio
-        ):
+        
+        # Check that all required feature types are present
+        required_types = {"5UTR", "CDS", "3UTR"}
+        if not required_types.issubset(type2ratio.keys()):
+            missing_types = required_types - set(type2ratio.keys())
             sys.exit(
-                "Error: Given ranges do not overlap all 3 features: "
-                "5'UTR, CDS and 3'UTR !"
+                f"Error: Given ranges do not overlap all 3 features: {missing_types}! "
                 "Please use the type_ratios argument instead."
             )
+
+    # Normalize distances based on feature types
     df["d_norm"] = np.where(
         df["Type"] == "5UTR",
         df["d"] * type2ratio["5UTR"],
@@ -200,19 +158,20 @@ def annotate_with_feature(
             df["d"] * type2ratio["3UTR"] + type2ratio["5UTR"] + type2ratio["CDS"],
         ),
     )
+    
     if annot_name:
-        df["Name"] = df["Name_ref"]
+        df["Name"] = df["Name_b"]  # Fixed: use _b suffix
 
-    weight_col = [c for c in df.columns if c.startswith("Weight_")]
-
+    # Calculate bin statistics for each weight column
+    weight_cols = [c for c in df.columns if c.startswith("Weight_")]
     df_list = []
-    if len(weight_col) > 0:
-        for c in weight_col:
+    
+    if len(weight_cols) > 0:
+        for c in weight_cols:
             df_list.append(
-                cal_bin_means(
+                calculate_bin_statistics(
                     df["d_norm"],
                     weights=df[c].fillna(0),
-                    # weights=np.ones(len(df["d_norm"])),
                     num_bins=bin_number,
                     bin_range=(0, 1),
                     suffix="_" + c.replace("Weight_", ""),
@@ -220,29 +179,22 @@ def annotate_with_feature(
             )
     else:
         df_list.append(
-            cal_bin_means(
+            calculate_bin_statistics(
                 df["d_norm"],
                 weights=np.ones(len(df["d_norm"])),
                 num_bins=bin_number,
                 bin_range=(0, 1),
             )
         )
+    
     df_score = pd.concat(df_list, axis=1)
 
+    # Select output columns
     if not keep_all:
         df = df.loc[:, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]]
-    # Use attrs property to store metadata in dataframe
-    # DataFrame.attrs is an experimental feature, use be used with pandas >= 1.0
+    
+    # Store metadata in dataframe attributes
     df.attrs.update(type2ratio)
     df_score.attrs.update(type2ratio)
+    
     return df, df_score
-
-
-if __name__ == "__main__":
-    INPUT_FILE = "../data/input.bed.gz"
-    FEATURE_FILE = "../data/features.bed.gz"
-    df_feature = parse_features(FEATURE_FILE)
-    df_input = parse_input(INPUT_FILE)
-    annotate_with_feature(df_input, df_feature).to_csv(
-        sys.stdout, sep="\t", index=False, header=False
-    )
