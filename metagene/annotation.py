@@ -203,7 +203,7 @@ def normalize_positions(
         )
     )
     n2c = {}
-    if weight_col_index is None:
+    if weight_col_index is None or len(weight_col_index) == 0:
         bin_counts, _ = np.histogram(
             gene_bins["feature_pos"],
             weights=gene_bins["feature_weight"],
