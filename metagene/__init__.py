@@ -11,12 +11,7 @@ from .gtf import prepare_exon_ref, load_gtf
 from .io import load_sites, parse_feature_file, load_reference
 from .overlap import annotate_with_features, calculate_bin_statistics
 from .annotation import map_to_transcripts, normalize_positions, show_summary_stats
-from .plotting import (
-    simple_metagene_plot,
-    plot_profile,
-    plot_binned_statistics,
-    plot_multiple_metagene_profiles,
-)
+from .plotting import plot_profile
 
 
 # Export main functions
@@ -35,8 +30,5 @@ __all__ = [
     "prepare_exon_ref",
     "load_gtf",
     # Plotting functions - new clean API
-    "simple_metagene_plot",
     "plot_profile",
-    "plot_binned_statistics",
-    "plot_multiple_metagene_profiles",
 ]

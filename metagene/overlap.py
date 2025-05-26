@@ -10,14 +10,13 @@ import sys
 import numpy as np
 import pandas as pd
 import pyranges as pr
-from typing import Optional, Tuple, List, Union
 
 
 def calculate_bin_statistics(
     data: np.ndarray, 
     weights: np.ndarray, 
     num_bins: int = 100, 
-    bin_range: Tuple[float, float] = (0, 1), 
+    bin_range: tuple[float, float] = (0, 1), 
     suffix: str = ""
 ) -> pd.DataFrame:
     """
@@ -73,11 +72,11 @@ def annotate_with_features(
     df_input: pd.DataFrame,
     df_feature: pd.DataFrame,
     bin_number: int = 100,
-    type_ratios: Optional[List[float]] = None,
+    type_ratios: list[float] | None = None,
     annot_name: bool = False,
     keep_all: bool = False,
     by_strand: bool = False,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Annotate input genomic intervals with feature information using PyRanges v1.
     
@@ -123,9 +122,9 @@ def annotate_with_features(
 
     # Calculate feature type ratios
     if type_ratios is not None:
-        type_ratios = np.array(type_ratios)
+        type_ratios_array = np.array(type_ratios)
         type2ratio = dict(
-            zip(["5UTR", "CDS", "3UTR"], type_ratios / np.sum(type_ratios))
+            zip(["5UTR", "CDS", "3UTR"], type_ratios_array / np.sum(type_ratios_array))
         )
     else:
         # Calculate ratios from overlapping transcripts
@@ -194,7 +193,7 @@ def annotate_with_features(
         df = df.loc[:, ["Chromosome", "Start", "End", "Name", "d_norm", "Strand"]]
     
     # Store metadata in dataframe attributes
-    df.attrs.update(type2ratio)
-    df_score.attrs.update(type2ratio)
+    df.attrs.update(type2ratio.items())
+    df_score.attrs.update(type2ratio.items())
     
     return df, df_score

@@ -7,7 +7,6 @@
 # Data I/O Module - Handles input/output operations
 
 import polars as pl
-from typing import List, Union, Optional, Dict, Any
 import os
 import pyranges as pr
 from pathlib import Path
@@ -18,7 +17,7 @@ from .config import BUILTIN_REFERENCES
 def load_sites(
     input_file_name: str,
     with_header: bool = False,
-    meta_col_index: List[int] = None,
+    meta_col_index: list[int] | None = None,
     separator: str = "\t",
 ) -> pr.PyRanges:
     """
@@ -30,6 +29,10 @@ def load_sites(
     """
     df = pl.scan_csv(input_file_name, separator=separator, has_header=with_header)
     colnames = list(df.collect_schema())
+    
+    if meta_col_index is None:
+        raise ValueError("meta_col_index must be provided")
+    
     meta_col_names = [colnames[i] for i in meta_col_index]
     # check if the Chromosome, Start, End, Strand are in the colnames
     # if so add the _original_ prefix, and return a new list of colnames
@@ -76,7 +79,7 @@ def parse_feature_file(feature_file_name: str) -> pr.PyRanges:
     return pr.PyRanges(df.to_dict())
 
 
-def load_reference(species: Optional[str] = None) -> Union[pr.PyRanges, dict]:
+def load_reference(species: str | None = None) -> pr.PyRanges | dict:
     """
     Load built-in reference annotations for common species using Polars only.
     

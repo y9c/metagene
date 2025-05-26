@@ -14,9 +14,8 @@ from metagene.io import load_sites, load_reference
 from metagene.annotation import (
     map_to_transcripts,
     normalize_positions,
-    show_summary_stats,
 )
-from metagene.plotting import simple_metagene_plot
+from metagene.plotting import plot_profile
 
 # Force reconfigure logging with timestamps after imports
 logging.getLogger().handlers.clear()  # Clear existing handlers
@@ -64,11 +63,11 @@ def test_buildin_grch38():
     logging.info(
         f"Normalized {gene_stats['5UTR'] + gene_stats['CDS'] + gene_stats['3UTR']} positions"
     )
-    logging.info(f"Gene splits:")
+    logging.info("Gene splits:")
     logging.info(f"  5'UTR: {gene_splits[0]:.3f}")
     logging.info(f"  CDS: {gene_splits[1]:.3f}")
     logging.info(f"  3'UTR: {gene_splits[2]:.3f}")
-    logging.info(f"Gene stats:")
+    logging.info("Gene stats:")
     logging.info(f"  Unknown: {gene_stats['None']}")
     logging.info(f"  5'UTR: {gene_stats['5UTR']}")
     logging.info(f"  CDS: {gene_stats['CDS']}")
@@ -77,7 +76,7 @@ def test_buildin_grch38():
     # Step 5: Generate plot
     logging.info("Step 5: Generating metagene profile plot...")
     output_path = Path(__file__).parent / "metagene_demo_package.png"
-    simple_metagene_plot(gene_bins, gene_splits, output_path)
+    plot_profile(gene_bins, gene_splits, str(output_path))
     logging.info(f"Plot saved to: {output_path}")
 
     # # Step 6: Show summary statistics

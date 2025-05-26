@@ -9,7 +9,6 @@
 import os
 import logging
 from pathlib import Path
-from typing import Optional, Union, List
 
 def setup_logger(name: str = "metagene", level: int = logging.INFO) -> logging.Logger:
     """
@@ -63,7 +62,7 @@ def get_cache_dir(app_name: str = "metagene") -> Path:
     return cache_dir
 
 
-def ensure_dir(path: Union[str, Path]) -> Path:
+def ensure_dir(path: str | Path) -> Path:
     """
     Ensure a directory exists, creating it if necessary.
     
@@ -78,7 +77,7 @@ def ensure_dir(path: Union[str, Path]) -> Path:
     return path
 
 
-def get_file_hash(file_path: Union[str, Path]) -> str:
+def get_file_hash(file_path: str | Path) -> str:
     """
     Calculate MD5 hash of a file.
     
@@ -102,7 +101,7 @@ def get_file_hash(file_path: Union[str, Path]) -> str:
     return hash_md5.hexdigest()
 
 
-def get_file_size(file_path: Union[str, Path]) -> int:
+def get_file_size(file_path: str | Path) -> int:
     """
     Get the size of a file in bytes.
     
@@ -125,11 +124,12 @@ def format_file_size(size_bytes: int) -> str:
     Returns:
         Human-readable file size string
     """
+    size = float(size_bytes)
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.1f} PB" 
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} PB" 
 
 
 def print_analysis_summary(params: dict) -> None:

@@ -19,7 +19,6 @@ import sys
 import logging
 import warnings
 import polars as pl
-import matplotlib.pyplot as plt
 from pathlib import Path
 
 # Add the parent directory to the path to import metagene modules
@@ -33,8 +32,7 @@ from metagene import (
     map_to_transcripts,
     normalize_positions,
     load_sites,
-    simple_metagene_plot,
-    show_summary_stats,
+    plot_profile,
 )
 
 # Configure logging
@@ -80,11 +78,11 @@ def main():
     logging.info("Step 4: Normalizing feature positions...")
     gene_bins, gene_stats, gene_splits = normalize_positions(annotated_df, split_strategy="median", bin_number=100)
     logging.info(f"Normalized {gene_bins['count'].sum()} positions")
-    logging.info(f"Gene splits:") 
+    logging.info("Gene splits:") 
     logging.info(f"  5'UTR: {gene_splits[0]:.3f}")
     logging.info(f"  CDS: {gene_splits[1]:.3f}")
     logging.info(f"  3'UTR: {gene_splits[2]:.3f}")
-    logging.info(f"Gene stats:")
+    logging.info("Gene stats:")
     logging.info(f"  Unknown: {gene_stats['None']}")
     logging.info(f"  5'UTR: {gene_stats['5UTR']}")
     logging.info(f"  CDS: {gene_stats['CDS']}")
@@ -93,7 +91,7 @@ def main():
     # Step 5: Generate plot
     logging.info("Step 5: Generating metagene profile plot...")
     output_path = Path(__file__).parent / "metagene_demo_package.png"
-    simple_metagene_plot(gene_bins, gene_splits, output_path)
+    plot_profile(gene_bins, gene_splits, str(output_path))
     logging.info(f"Plot saved to: {output_path}")
 
     # # Step 6: Show summary statistics

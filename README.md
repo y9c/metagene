@@ -47,7 +47,7 @@ metagene -i sites.bed -g custom.gtf.gz -m 1,2,3 -w 5 \
 import polars as pl
 from metagene import (
     load_sites, load_reference, map_to_transcripts, 
-    normalize_positions, simple_metagene_plot
+    normalize_positions, plot_profile
 )
 
 # Load your genomic sites
@@ -61,7 +61,7 @@ annotated_df = map_to_transcripts(sites_df, reference)
 final_df, gene_splits = normalize_positions(annotated_df, strategy="median")
 
 # Generate plot
-simple_metagene_plot(final_df, gene_splits, "metagene_plot.png")
+plot_profile(final_df, gene_splits, "metagene_plot.png")
 
 print(f"Analyzed {len(final_df)} sites")
 print(f"Gene splits - 5'UTR: {gene_splits[0]:.3f}, CDS: {gene_splits[1]:.3f}, 3'UTR: {gene_splits[2]:.3f}")
@@ -176,7 +176,7 @@ metagene -i sites.tsv.gz -g annotation.gtf.gz --with-header \
 - `load_gtf(file)` - Load custom GTF annotation  
 - `map_to_transcripts(sites, reference)` - Annotate sites with gene information
 - `normalize_positions(annotated_sites, strategy="median")` - Normalize to relative positions
-- `simple_metagene_plot(data, gene_splits, output_file)` - Generate metagene plot
+- `plot_profile(data, gene_splits, output_file)` - Generate metagene plot
 
 ### Analysis Workflow
 
@@ -190,7 +190,7 @@ annotated = map_to_transcripts(sites, reference)
 normalized, splits = normalize_positions(annotated)
 
 # 3. Visualize
-simple_metagene_plot(normalized, splits, "output.png")
+plot_profile(normalized, splits, "output.png")
 ```
 
 ## Demo

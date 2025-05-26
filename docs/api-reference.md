@@ -143,12 +143,12 @@ metagene.show_summary_stats(data: PyRanges) -> None
 
 ## Plotting Functions
 
-### simple_metagene_plot()
+### plot_profile()
 
 Generate a simple metagene profile plot.
 
 ```python
-metagene.simple_metagene_plot(
+metagene.plot_profile(
     data: PyRanges,
     output_path: str,
     title: str = "Metagene Profile",

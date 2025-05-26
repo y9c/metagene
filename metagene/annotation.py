@@ -19,7 +19,9 @@ def map_to_transcripts(
     qry = input_sites.loc[:, ["Chromosome", "Start", "End", "Strand"]].assign(
         _tmp_row_index=np.arange(0, input_sites.shape[0])
     )
-    annot = exon_ref.join_ranges(qry, suffix="_qry", join_type="inner")
+    annot = exon_ref.join_ranges(
+        qry, suffix="_qry", join_type="inner", strand_behavior="same"
+    )
 
     annot = pl.DataFrame(annot)
     # Add reference columns
@@ -137,7 +139,10 @@ def calculate_gene_splits(
 
 
 def normalize_positions(
-    annotated_sites: pl.DataFrame, split_strategy: str = "median", bin_number: int = 100, weight_col_index: list[int] | None = None
+    annotated_sites: pl.DataFrame,
+    split_strategy: str = "median",
+    bin_number: int = 100,
+    weight_col_index: list[int] | None = None,
 ) -> tuple[pl.DataFrame, dict, tuple]:
     """
     Normalize transcript positions to relative feature positions (0-1 scale).
@@ -165,7 +170,7 @@ def normalize_positions(
         .group_by("feature_type")
         .agg(count=pl.col("feature_weight").sum())
     )
-    gene_stats = dict( zip(gene_stats["feature_type"], gene_stats["count"]))
+    gene_stats = dict(zip(gene_stats["feature_type"], gene_stats["count"]))
 
     gene_bins = (
         annotated_sites.with_columns(
@@ -215,20 +220,22 @@ def normalize_positions(
             )
             n2c[f"count_{col_name}"] = bin_counts
     bin_midpoints = np.linspace(0, 1, bin_number) + 0.5 / bin_number
-    gene_bins = pl.DataFrame({
-        "feature_midpoint": bin_midpoints,
-        **n2c,
-    })
+    gene_bins = pl.DataFrame(
+        {
+            "feature_midpoint": bin_midpoints,
+            **n2c,
+        }
+    )
     return gene_bins, gene_stats, gene_splits
 
 
 def show_summary_stats(df: pl.DataFrame) -> str:
     """
     Generate summary statistics of the analysis.
-    
+
     Args:
         df_normalized: Final DataFrame with all annotations
-        
+
     Returns:
         A formatted string containing the summary statistics
     """
@@ -239,7 +246,7 @@ def show_summary_stats(df: pl.DataFrame) -> str:
 
     # Count by feature type
     feature_counts = df.group_by("feature_type").len().sort("feature_type")
-    
+
     # Build feature distribution string
     feature_dist = []
     for row in feature_counts.iter_rows():
@@ -255,7 +262,7 @@ def show_summary_stats(df: pl.DataFrame) -> str:
             f"Mean: {feature_positions.mean():.3f}",
             f"Median: {feature_positions.median():.3f}",
             f"Min: {feature_positions.min():.3f}",
-            f"Max: {feature_positions.max():.3f}"
+            f"Max: {feature_positions.max():.3f}",
         ]
     else:
         pos_stats = ["No valid position statistics available (all values are null)"]
@@ -266,5 +273,5 @@ def show_summary_stats(df: pl.DataFrame) -> str:
         f"Feature Distribution:\n  " + "\n  ".join(feature_dist) + "\n\n"
         f"Position Statistics:\n  " + "\n  ".join(pos_stats)
     )
-    
+
     return summary

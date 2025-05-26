@@ -7,11 +7,7 @@
 # Command-line interface for metagene analysis
 
 import click
-import os
 import sys
-from pathlib import Path
-from typing import Optional, List, Dict, Any
-from pyparsing import anyOpenTag
 from rich.progress import (
     Progress,
     SpinnerColumn,
@@ -29,7 +25,7 @@ from .annotation import map_to_transcripts, normalize_positions
 from .gtf import load_gtf
 from .download import download_references, list_references as show_references
 from .config import BUILTIN_REFERENCES
-from .plotting import simple_metagene_plot
+from .plotting import plot_profile
 
 # Set up rich console
 console = Console()
@@ -103,7 +99,7 @@ def parse_comma_separated_strings(ctx, param, value):
     return [x.strip() for x in value.split(",")]
 
 
-def update_progress_description(progress: Any, task: Any, description: str) -> None:
+def update_progress_description(progress, task, description: str) -> None:
     """Update progress bar description."""
     progress.update(task, description=f"[cyan]{description}...")
 
@@ -225,21 +221,21 @@ def update_progress_description(progress: Any, task: Any, description: str) -> N
 def cli(
     input_file: str,
     output_file: str,
-    output_score: Optional[str],
-    output_figure: Optional[str],
-    reference: Optional[str],
-    gtf: Optional[str],
+    output_score: str | None,
+    output_figure: str | None,
+    reference: str | None,
+    gtf: str | None,
     region: str,
     bins: int,
     with_header: bool,
     separator: str,
-    meta_columns: List[int],
-    weight_columns: List[int],
-    weight_names: List[str],
+    meta_columns: list[int],
+    weight_columns: list[int],
+    weight_names: list[str],
     score_transform: str,
     normalize: bool,
     list_references_flag: bool,
-    download: Optional[str],
+    download: str | None,
 ) -> None:
     """Run metagene analysis on genomic sites."""
     # Check if no arguments provided (except defaults) and show help
@@ -326,7 +322,7 @@ def cli(
                 console.print("[red]✗[/red] GTF file path is required")
                 sys.exit(1)
             exon_ref = load_gtf(gtf)
-            console.print(f"[green]✓[/green] GTF file loaded")
+            console.print("[green]✓[/green] GTF file loaded")
 
         # Create progress display
         with Progress(
@@ -369,7 +365,7 @@ def cli(
             progress.update(task, completed=50)
 
             annotated_df = map_to_transcripts(input_df, exon_ref)
-            progress.console.log(f"[green]✓[/green] Annotated transcripts")
+            progress.console.log("[green]✓[/green] Annotated transcripts")
 
             # Step 4: Normalize positions
             update_progress_description(progress, task, "Normalizing positions")
@@ -408,7 +404,7 @@ def cli(
             # Step 6: Generate plot
             if output_figure:
                 update_progress_description(progress, task, "Generating plot")
-                simple_metagene_plot(gene_bins, gene_splits, output_figure)
+                plot_profile(gene_bins, gene_splits, output_figure)
                 progress.console.log(f"[green]✓[/green] Saved plot to: {output_figure}")
 
             # Update progress to complete

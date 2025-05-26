@@ -47,7 +47,7 @@ normalized = metagene.normalize_positions(
 )
 
 # Generate publication-ready plot
-metagene.simple_metagene_plot(
+metagene.plot_profile(
     normalized,
     "m6a_metagene_profile.png",
     title="m6A Methylation Sites Distribution",
@@ -105,7 +105,7 @@ for region, color in zip(regions, colors):
         bins=100
     )
     
-    metagene.simple_metagene_plot(
+    metagene.plot_profile(
         normalized,
         f"tfbs_{region}_profile.png",
         title=f"TFBS Distribution - {region.upper()}",
@@ -187,7 +187,7 @@ mapped = metagene.map_to_transcripts(sites, reference)
 normalized = metagene.normalize_positions(mapped, region="all")
 
 # Generate plot
-metagene.simple_metagene_plot(
+metagene.plot_profile(
     normalized,
     "lncRNA_analysis.png",
     title="Sites Distribution on lncRNAs"
@@ -220,7 +220,7 @@ normalized = metagene.normalize_positions(
 )
 
 # Create detailed plot
-metagene.simple_metagene_plot(
+metagene.plot_profile(
     normalized,
     "high_res_cds.png",
     title="High-Resolution CDS Profile",
@@ -266,7 +266,7 @@ for bed_file in input_dir.glob("*.bed"):
     # Save normalized data (implementation depends on format)
     # normalized.to_csv(output_file, sep='\t')
     
-    metagene.simple_metagene_plot(
+    metagene.plot_profile(
         normalized,
         str(plot_file),
         title=f"Metagene Profile - {sample_name}"
@@ -328,7 +328,7 @@ print(f"Strand distribution: {strand_counts}")
 # Proceed with analysis only if mapping rate is acceptable
 if mapping_rate > 50:  # Threshold
     normalized = metagene.normalize_positions(mapped)
-    metagene.simple_metagene_plot(normalized, "qc_passed_plot.png")
+    metagene.plot_profile(normalized, "qc_passed_plot.png")
 else:
     print("Warning: Low mapping rate, check input data quality")
 ```
@@ -361,7 +361,7 @@ fig, ax = plt.subplots(figsize=(10, 6))
 
 # Plot with custom styling
 # (This would use internal plotting functions)
-metagene.simple_metagene_plot(
+metagene.plot_profile(
     normalized,
     "publication_ready.png",
     title="Metagene Analysis",
@@ -423,7 +423,7 @@ mapped = metagene.map_to_transcripts(sites, reference)
 
 for bins in bin_sizes:
     normalized = metagene.normalize_positions(mapped, bins=bins)
-    metagene.simple_metagene_plot(
+    metagene.plot_profile(
         normalized,
         f"test_bins_{bins}.png",
         title=f"Bins: {bins}"

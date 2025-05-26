@@ -41,7 +41,7 @@ results = metagene.map_to_transcripts(sites, reference)
 normalized = metagene.normalize_positions(results)
 
 # Generate plot
-metagene.simple_metagene_plot(normalized, "output.png")
+metagene.plot_profile(normalized, "output.png")
 ```
 
 ### Command Line Interface

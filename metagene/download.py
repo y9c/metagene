@@ -6,21 +6,17 @@
 #
 # Reference file download functionality
 
-import os
-import shutil
 import urllib.request
 import urllib.error
 from pathlib import Path
-from typing import Dict, List
 
 from .utils import (
     setup_logger,
     get_cache_dir,
-    ensure_dir,
     get_file_size,
     format_file_size
 )
-from .config import GITHUB_API_URL, BUILTIN_REFERENCES, GITHUB_DOWNLOAD_BASE
+from .config import BUILTIN_REFERENCES, GITHUB_DOWNLOAD_BASE
 
 # Set up logger
 logger = setup_logger(__name__)

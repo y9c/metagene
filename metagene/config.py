@@ -6,7 +6,7 @@
 #
 # Configuration data for Metagene
 
-from typing import Dict, TypedDict
+from typing import TypedDict
 
 class ReferenceInfo(TypedDict):
     parquet_file: str
@@ -19,7 +19,7 @@ GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 GITHUB_DOWNLOAD_BASE = f"https://github.com/{GITHUB_REPO}/releases/download/data"
 
 # Built-in reference mappings with source information
-BUILTIN_REFERENCES: Dict[str, ReferenceInfo] = {
+BUILTIN_REFERENCES: dict[str, ReferenceInfo] = {
     # Human genomes
     "GRCh38": {
         "parquet_file": "GRCh38.parquet",

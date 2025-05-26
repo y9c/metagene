@@ -85,7 +85,7 @@ metagene.show_summary_stats(normalized)
 
 ```python
 # Create metagene plot
-metagene.simple_metagene_plot(
+metagene.plot_profile(
     normalized, 
     output_path="metagene_plot.png",
     title="My Metagene Analysis"
@@ -209,7 +209,7 @@ results = metagene.map_to_transcripts(sites, reference)
 normalized = metagene.normalize_positions(results, region="3utr")
 
 # Create publication-ready plot
-metagene.simple_metagene_plot(
+metagene.plot_profile(
     normalized, 
     "m6a_metagene.png",
     title="m6A Distribution in 3' UTRs"
@@ -242,7 +242,7 @@ results = metagene.map_to_transcripts(sites, reference)
 normalized = metagene.normalize_positions(results)
 
 # Generate plot
-metagene.simple_metagene_plot(normalized, "custom_analysis.png")
+metagene.plot_profile(normalized, "custom_analysis.png")
 ```
 
 ---
