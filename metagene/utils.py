@@ -9,6 +9,63 @@
 import os
 import logging
 from pathlib import Path
+from rich.console import Console
+from rich.logging import RichHandler
+
+
+class NewlineRichHandler(RichHandler):
+    """Rich logging handler that adds newlines before and after log messages for better visual separation."""
+    
+    def __init__(
+        self,
+        console=None,
+        rich_tracebacks=True,
+        markup=True,
+        show_time=True,
+        show_path=False,
+        show_level=True,
+        enable_link_path=False,
+        **kwargs,
+    ):
+        if console is None:
+            console = Console()
+        super().__init__(
+            console=console,
+            rich_tracebacks=rich_tracebacks,
+            markup=markup,
+            show_time=show_time,
+            show_path=show_path,
+            show_level=show_level,
+            enable_link_path=enable_link_path,
+            **kwargs,
+        )
+
+    def emit(self, record):
+        try:
+            message = self.format(record)
+            self.console.print("\n" + message)
+        except Exception:
+            self.handleError(record)
+
+
+def setup_rich_logger(name: str = "metagene", level: int = logging.INFO, console: Console | None = None) -> logging.Logger:
+    """
+    Set up and configure a rich logger for the application.
+    
+    Args:
+        name: Name of the logger (default: "metagene")
+        level: Logging level (default: INFO)
+        console: Rich console instance to use (optional)
+        
+    Returns:
+        Configured logger instance with rich formatting
+    """
+    logger = logging.getLogger(name)
+    logger.handlers = []  # Remove any existing handlers
+    logger.addHandler(NewlineRichHandler(console=console))
+    logger.setLevel(level)
+    logger.propagate = False  # Prevent propagation to root logger
+    return logger
 
 def setup_logger(name: str = "metagene", level: int = logging.INFO) -> logging.Logger:
     """
@@ -79,7 +136,8 @@ def ensure_dir(path: str | Path) -> Path:
 
 def get_file_hash(file_path: str | Path) -> str:
     """
-    Calculate MD5 hash of a file.
+    Calculate MD5 hash based on file path and first chunk of content.
+    This is much faster than hashing the entire file, especially for large GTF files.
     
     Args:
         file_path: Path to the file
@@ -94,9 +152,15 @@ def get_file_hash(file_path: str | Path) -> str:
         raise FileNotFoundError(f"File not found: {file_path}")
     
     hash_md5 = hashlib.md5()
+    
+    # Hash the absolute file path
+    hash_md5.update(str(file_path.resolve()).encode('utf-8'))
+    
+    # Hash the first chunk (4096 * 8 = 32KB) of the file
+    chunk_size = 4096 * 8
     with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
+        first_chunk = f.read(chunk_size)
+        hash_md5.update(first_chunk)
     
     return hash_md5.hexdigest()
 

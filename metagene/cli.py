@@ -16,9 +16,7 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 from rich.console import Console
-from rich.logging import RichHandler
 import logging
-
 
 from .io import load_sites, load_reference
 from .annotation import map_to_transcripts, normalize_positions
@@ -26,40 +24,10 @@ from .gtf import load_gtf
 from .download import download_references, list_references as show_references
 from .config import BUILTIN_REFERENCES
 from .plotting import plot_profile
+from .utils import NewlineRichHandler
 
 # Set up rich console
 console = Console()
-
-
-class NewlineRichHandler(RichHandler):
-    def __init__(
-        self,
-        console=console,
-        rich_tracebacks=True,
-        markup=True,
-        show_time=True,
-        show_path=False,
-        show_level=True,
-        enable_link_path=False,
-        **kwargs,
-    ):
-        super().__init__(
-            console=console,
-            rich_tracebacks=rich_tracebacks,
-            markup=markup,
-            show_time=show_time,
-            show_path=show_path,
-            show_level=show_level,
-            enable_link_path=enable_link_path,
-            **kwargs,
-        )
-
-    def emit(self, record):
-        try:
-            message = self.format(record)
-            self.console.print("\n" + message + "\n")
-        except Exception:
-            self.handleError(record)
 
 
 # Set up logging with custom Rich handler
@@ -67,7 +35,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
     datefmt="[%X]",
-    handlers=[NewlineRichHandler()],
+    handlers=[NewlineRichHandler(console=console)],
 )
 
 # Configure root logger
@@ -162,6 +130,7 @@ def update_progress_description(progress, task, description: str) -> None:
 )
 @click.option(
     "--with-header",
+    "-H",
     is_flag=True,
     help="Input file has header line",
 )
