@@ -219,7 +219,7 @@ def normalize_positions(
                 bins=np.linspace(0, 1, bin_number + 1),
             )
             n2c[f"count_{col_name}"] = bin_counts
-    bin_midpoints = np.linspace(0, 1, bin_number) + 0.5 / bin_number
+    bin_midpoints = np.linspace(0, 1, bin_number + 1)[:-1] + 0.5 / bin_number
     gene_bins = pl.DataFrame(
         {
             "feature_midpoint": bin_midpoints,
