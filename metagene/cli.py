@@ -8,6 +8,7 @@
 
 import click
 import sys
+import polars as pl
 from rich.progress import (
     Progress,
     SpinnerColumn,
@@ -254,6 +255,9 @@ def cli(
         sys.exit(1)
 
     try:
+        # Initialize variable with proper type
+        exon_ref: pl.DataFrame
+        
         # Validate that exactly one of reference or gtf is provided
         if reference and gtf:
             console.print(
@@ -267,16 +271,18 @@ def cli(
             sys.exit(1)
 
         # Pre-load reference data BEFORE progress bar to handle any download prompts
+        exon_ref: pl.DataFrame
         if reference:
             # Use built-in reference
             if reference in BUILTIN_REFERENCES:
                 console.print(f"[cyan]Checking reference '{reference}'...")
-                exon_ref = load_reference(reference)
-                if exon_ref is None:
+                exon_ref_result = load_reference(reference)
+                if exon_ref_result is None or not isinstance(exon_ref_result, pl.DataFrame):
                     console.print(
                         f"[red]✗[/red] Failed to load reference '{reference}'"
                     )
                     sys.exit(1)
+                exon_ref = exon_ref_result
                 console.print(f"[green]✓[/green] Reference '{reference}' ready")
             else:
                 console.print(f"[red]✗[/red] Unknown built-in reference: {reference}")

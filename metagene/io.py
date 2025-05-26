@@ -8,7 +8,6 @@
 
 import polars as pl
 import os
-import pyranges as pr
 from pathlib import Path
 from .utils import get_cache_dir
 from .config import BUILTIN_REFERENCES
@@ -19,7 +18,7 @@ def load_sites(
     with_header: bool = False,
     meta_col_index: list[int] | None = None,
     separator: str = "\t",
-) -> pr.PyRanges:
+) -> pl.DataFrame:
     """
     Load genomic sites from a file using Polars only.
     Returns:
@@ -66,20 +65,20 @@ def load_sites(
     else:
         raise ValueError("meta_col_index must specify either 3 or 4 column indices")
 
-    return pr.PyRanges(df.collect().to_dict())
+    return df.collect()
 
 
-def parse_feature_file(feature_file_name: str) -> pr.PyRanges:
+def parse_feature_file(feature_file_name: str) -> pl.DataFrame:
     """
     Parse feature file (BED or Parquet format) using Polars only.
     Returns:
         Polars DataFrame with processed feature information
     """
     df = pl.read_parquet(feature_file_name)
-    return pr.PyRanges(df.to_dict())
+    return df
 
 
-def load_reference(species: str | None = None) -> pr.PyRanges | dict:
+def load_reference(species: str | None = None) -> pl.DataFrame | dict:
     """
     Load built-in reference annotations for common species using Polars only.
     
@@ -87,7 +86,7 @@ def load_reference(species: str | None = None) -> pr.PyRanges | dict:
         species: Species name to load, or None to get available species
         
     Returns:
-        PyRanges with feature annotations, or dict of available species if species=None
+        Polars DataFrame with feature annotations, or dict of available species if species=None
     """
     if species is None:
         available = {}

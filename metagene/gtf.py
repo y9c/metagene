@@ -25,10 +25,11 @@ logger.setLevel(logging.INFO)
 logger.propagate = False  # Prevent propagation to root logger
 
 
-def prepare_exon_ref(gtf_file: str) -> pr.PyRanges:
+def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
     """
     Prepares a comprehensive exon reference from a GTF file.
     Uses Polars for initial GTF parsing for speed.
+    Returns a Polars DataFrame with exon reference data.
     """
 
     try:
@@ -192,23 +193,24 @@ def prepare_exon_ref(gtf_file: str) -> pr.PyRanges:
     pr_tx["End_exon"] = pr_tx["End_exon"].astype("Int32")
     pr_tx["start_codon_pos"] = pr_tx["start_codon_pos"].astype("Int32")
     pr_tx["stop_codon_pos"] = pr_tx["stop_codon_pos"].astype("Int32")
-    return pr_tx
+    return pl.DataFrame(pr_tx)
 
 
-def load_gtf(gtf_file: str, use_cache: bool = True) -> pr.PyRanges:
+def load_gtf(gtf_file: str, use_cache: bool = True) -> pl.DataFrame:
     """
-    Load and process a GTF file to a PyRanges object with caching support.
+    Load and process a GTF file to a Polars DataFrame with caching support.
     
     Args:
         gtf_file: Path to the GTF file
         use_cache: Whether to use caching for faster loading
         
     Returns:
-        PyRanges object with processed exon information
+        Polars DataFrame with processed exon information
     """
     if not use_cache:
         logger.info(f"[cyan]Cache disabled. Processing GTF file: {gtf_file}[/cyan]")
-        return prepare_exon_ref(gtf_file)
+        df_result = prepare_exon_ref(gtf_file)
+        return df_result
 
     gtf_file_abs = os.path.abspath(gtf_file)
     gtf_dir = os.path.dirname(gtf_file_abs)
@@ -228,7 +230,7 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pr.PyRanges:
             try:
                 logger.info(f"[cyan]Loading local cached reference from: {local_cache_filepath}[/cyan]")
                 df = pl.read_parquet(local_cache_filepath)
-                return pr.PyRanges(df.to_dict())  # type: ignore
+                return df
             except Exception as e:
                 logger.warning(
                     f"[yellow]⚠[/yellow] Error loading local cache file {local_cache_filepath}: {e}. Attempting default cache."
@@ -245,7 +247,8 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pr.PyRanges:
         cache_dir = get_cache_dir()
     except OSError as e:
         logger.error(f"[red]✗[/red] Could not create cache directory: {e}. Processing without caching.")
-        return prepare_exon_ref(gtf_file)
+        df_result = prepare_exon_ref(gtf_file)
+        return df_result
 
     path_hash = get_file_hash(gtf_file_abs)
     default_cache_filename = f"{gtf_basename}_{path_hash}.parquet"
@@ -262,7 +265,7 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pr.PyRanges:
             try:
                 logger.info(f"[cyan]Loading default cached reference from: {default_cache_filepath}[/cyan]")
                 df = pl.read_parquet(default_cache_filepath)
-                return pr.PyRanges(df.to_dict())  # type: ignore
+                return df
             except Exception as e:
                 logger.warning(
                     f"[yellow]⚠[/yellow] Error loading default cache file {default_cache_filepath}: {e}. Processing without caching."
@@ -277,13 +280,13 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pr.PyRanges:
 
     # If we get here, we need to process the GTF file
     logger.info(f"[cyan]Processing GTF file: {gtf_file}[/cyan]")
-    pr_tx = prepare_exon_ref(gtf_file)
+    df_result = prepare_exon_ref(gtf_file)
 
     # Try to save to local cache first (same directory as GTF file)
     local_cache_saved = False
     try:
         logger.info(f"[cyan]Attempting to save processed reference to local cache: {local_cache_filepath}[/cyan]")
-        pr_tx.to_parquet(local_cache_filepath)
+        df_result.write_parquet(local_cache_filepath)
         local_cache_saved = True
         logger.info(f"[green]✓[/green] Successfully saved to local cache: {local_cache_filepath}")
     except Exception as e:
@@ -293,12 +296,12 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pr.PyRanges:
     if not local_cache_saved:
         try:
             logger.info(f"[cyan]Saving processed reference to default cache: {default_cache_filepath}[/cyan]")
-            pr_tx.to_parquet(default_cache_filepath)
+            df_result.write_parquet(default_cache_filepath)
             logger.info(f"[green]✓[/green] Successfully saved to default cache: {default_cache_filepath}")
         except Exception as e:
             logger.warning(f"[yellow]⚠[/yellow] Could not save to default cache: {e}. Proceeding without caching.")
 
-    return pr_tx
+    return df_result
 
 
 if __name__ == "__main__":
@@ -324,8 +327,8 @@ chr1\tunknown\tstop_codon\t1800\t1802\t.\t+\t.\ttranscript_id "test_transcript";
 
     logger.info(f"[cyan]Processing GTF file with caching: {test_gtf_path}[/cyan]")
     df_result = load_gtf(test_gtf_path)
-    logger.info("[green]✓[/green] Processing complete. Resulting PyRanges object (first call):")
-    if df_result is not None and not df_result.empty:
+    logger.info("[green]✓[/green] Processing complete. Resulting Polars DataFrame (first call):")
+    if df_result is not None and len(df_result) > 0:
         logger.info(str(df_result.head()))
     else:
         logger.warning("[yellow]⚠[/yellow] No data or empty dataframe returned.")
@@ -334,8 +337,8 @@ chr1\tunknown\tstop_codon\t1800\t1802\t.\t+\t.\ttranscript_id "test_transcript";
         f"[cyan]Processing GTF file with caching again (should use cache): {test_gtf_path}[/cyan]"
     )
     df_result_cached = load_gtf(test_gtf_path)
-    logger.info("[green]✓[/green] Resulting PyRanges object (second call):")
-    if df_result_cached is not None and not df_result_cached.empty:
+    logger.info("[green]✓[/green] Resulting Polars DataFrame (second call):")
+    if df_result_cached is not None and len(df_result_cached) > 0:
         logger.info(str(df_result_cached.head()))
     else:
         logger.warning("[yellow]⚠[/yellow] No data or empty dataframe returned on second call.")
@@ -343,8 +346,8 @@ chr1\tunknown\tstop_codon\t1800\t1802\t.\t+\t.\ttranscript_id "test_transcript";
     # Test with cache disabled
     logger.info(f"[cyan]Processing GTF file with cache disabled: {test_gtf_path}[/cyan]")
     df_result_no_cache = load_gtf(test_gtf_path, use_cache=False)
-    logger.info("[green]✓[/green] Resulting PyRanges object (cache disabled):")
-    if df_result_no_cache is not None and not df_result_no_cache.empty:
+    logger.info("[green]✓[/green] Resulting Polars DataFrame (cache disabled):")
+    if df_result_no_cache is not None and len(df_result_no_cache) > 0:
         logger.info(str(df_result_no_cache.head()))
     else:
         logger.warning("[yellow]⚠[/yellow] No data or empty dataframe returned with cache disabled.")

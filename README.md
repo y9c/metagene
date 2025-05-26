@@ -39,7 +39,6 @@ metagene -i sites.bed -g custom.gtf.gz -m 1,2,3 -w 5 \
 ### Python API
 
 ```python
-import polars as pl
 from metagene import (
     load_sites, load_reference, map_to_transcripts, 
     normalize_positions, plot_profile
@@ -49,10 +48,10 @@ from metagene import (
 sites_df = load_sites("sites.tsv.gz", with_header=True, meta_col_index=[0, 1, 2])
 
 # Load reference genome annotation
-reference = load_reference("GRCh38")  # or load_gtf("custom.gtf.gz")
+reference_df = load_reference("GRCh38")  # or load_gtf("custom.gtf.gz")
 
 # Perform metagene analysis
-annotated_df = map_to_transcripts(sites_df, reference)
+annotated_df = map_to_transcripts(sites_df, reference_df)
 gene_bins, gene_stats, gene_splits = normalize_positions(
     annotated_df, split_strategy="median", bin_number=100
 )
@@ -67,7 +66,7 @@ print(f"Gene statistics - 5'UTR: {gene_stats['5UTR']}, CDS: {gene_stats['CDS']},
 
 ## Input Formats
 
-### TSV Format (Tab-separated values)
+### TSV Format
 ```
 ref	pos	strand	score	pvalue
 chr1	1000000	+	0.85	0.001
@@ -83,7 +82,7 @@ chr1	1999999	2000000	score2	0.72	-
 ### Column Specification
 - Use `-m/--meta-columns` to specify coordinate columns (1-based indexing)
 - Use `-w/--weight-columns` to specify score/weight columns
-- Use `--with-header` if your file has a header line
+- Use `-H/--with-header` if your file has a header line
 
 ## Built-in References
 
@@ -136,38 +135,44 @@ metagene --download all
 ```
 
 
-## CLI Examples
+## CLI Options
 
-### Basic Analysis
+```
+Usage: metagene [OPTIONS]
 
-```bash
-# Analyze sites with built-in human reference
-metagene -i sites.tsv.gz -r GRCh38 --with-header \
-         -m 1,2,3 -w 5 -o output.tsv -p plot.png
+  Run metagene analysis on genomic sites.
+
+Options:
+  --version                       Show the version and exit.
+  -i, --input PATH                Input file path (BED, GTF, TSV or CSV, etc.)
+  -o, --output PATH               Output file path (TSV, CSV)
+  -s, --output-score PATH         Output file for binned score statistics
+  -p, --output-figure PATH        Output file for metagene plot
+  -r, --reference TEXT            Built-in reference genome to use (e.g.,
+                                  GRCh38, GRCm39)
+  -g, --gtf PATH                  GTF/GFF file path for custom reference
+  --region     Region to analyze (default: all)
+  -b, --bins INTEGER              Number of bins for analysis (default: 100)
+  -H, --with-header               Input file has header line
+  -S, --separator TEXT            Separator for input file (default: tab)
+  -m, --meta-columns TEXT         Input column indices (1-based) for genomic
+                                  coordinates. The columns should contain
+                                  Chromosome,Start,End,Strand or
+                                  Chromosome,Site,Strand
+  -w, --weight-columns TEXT       Input column indices (1-based) for
+                                  weight/score values
+  -n, --weight-names TEXT         Names for weight columns
+  --score-transform 
+                                  Transform to apply to scores (default: none)
+  --normalize                     Normalize scores by transcript length
+  --list                          List all available built-in references and
+                                  exit
+  --download TEXT                 Download a specific reference (e.g., GRCh38)
+                                  or 'all' for all references
+  -h, --help                      Show this message and exit.
 ```
 
-Note: References are automatically downloaded on first use.
-
-### Advanced Options
-```bash
-# Full analysis with custom parameters
-metagene -i sites.bed -r GRCh38 \
-         -m 1,2,3 -w 5,6 -n "score1,score2" \
-         --bins 200 --region all \
-         --score-transform log2 --normalize \
-         -o annotated.tsv -s statistics.tsv -p metagene.pdf
-```
-
-### Custom GTF Reference
-```bash
-# Use your own GTF annotation
-metagene -i sites.tsv.gz -g annotation.gtf.gz --with-header \
-         -m 1,2,3 -w 4 -o output.tsv -p plot.png
-```
-
-## API Reference
-
-### Core Functions
+## API Reference (Core Functions)
 
 - `load_sites(file, with_header=False, meta_col_index=[0,1,2])` - Load genomic sites
 - `load_reference(name)` - Load built-in reference genome
@@ -176,22 +181,6 @@ metagene -i sites.tsv.gz -g annotation.gtf.gz --with-header \
 - `normalize_positions(annotated_sites, strategy="median")` - Normalize to relative positions
 - `plot_profile(data, gene_splits, output_file)` - Generate metagene plot
 
-### Analysis Workflow
-
-```python
-# 1. Load data
-sites = load_sites("input.tsv", with_header=True, meta_col_index=[0,1,2])
-reference = load_reference("GRCh38")
-
-# 2. Annotate and normalize  
-annotated = map_to_transcripts(sites, reference)
-gene_bins, gene_stats, gene_splits = normalize_positions(
-    annotated, split_strategy="median", bin_number=100
-)
-
-# 3. Visualize
-plot_profile(gene_bins, gene_splits, "output.png")
-```
 
 ## Demo
 

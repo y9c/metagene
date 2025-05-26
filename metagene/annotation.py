@@ -9,29 +9,37 @@ import numpy as np
 
 
 def map_to_transcripts(
-    input_sites: pr.PyRanges, exon_ref: pr.PyRanges
+    input_sites: pl.DataFrame, exon_ref: pl.DataFrame
 ) -> pl.DataFrame:
     """
     Annotate input sites with transcript information using exon reference.
     Returns a Polars DataFrame with transcript mapping.
     """
-    # Prepare query with row index for join
-    qry = input_sites.loc[:, ["Chromosome", "Start", "End", "Strand"]].assign(
-        _tmp_row_index=np.arange(0, input_sites.shape[0])
-    )
-    annot = exon_ref.join_ranges(
-        qry, suffix="_qry", join_type="inner", strand_behavior="same"
+    # Convert DataFrames to PyRanges for overlap operations
+    input_pandas = input_sites.select(["Chromosome", "Start", "End", "Strand"]).to_pandas()
+    input_pandas["_tmp_row_index"] = np.arange(0, len(input_pandas))
+    
+    input_pr = pr.PyRanges(input_pandas)  # type: ignore
+    exon_pr = pr.PyRanges(exon_ref.to_pandas())  # type: ignore
+    
+    # Perform join operation
+    annot_pr = exon_pr.join_ranges(  # type: ignore
+        input_pr, suffix="_qry", join_type="inner", strand_behavior="same"  # type: ignore
     )
 
     # Check here, if the join returned no results, raise an error
     # please check if you have valide input sites or chosen the correct exon reference
-    if annot.empty:
+    if hasattr(annot_pr, 'empty') and annot_pr.empty:  # type: ignore
         raise ValueError(
             "No overlaps found between input sites and exon reference. "
             "Please check your input data and exon reference are matching."
         )
 
-    annot = pl.DataFrame(annot)
+    # Convert back to DataFrame
+    if hasattr(annot_pr, 'df'):
+        annot = pl.DataFrame(annot_pr.df)  # type: ignore
+    else:
+        annot = pl.DataFrame(annot_pr)  # type: ignore
     # Add reference columns
     annot = annot.with_columns(
         pl.col("Chromosome").alias("Chromosome_ref"),
@@ -102,7 +110,7 @@ def map_to_transcripts(
 
     # Join annotation back to input_sites
     annotated_sites = (
-        pl.DataFrame(input_sites)
+        input_sites
         .with_row_index("_tmp_row_index")
         .drop(annotation_cols, strict=False)
         .join(annot, on="_tmp_row_index", how="left")
@@ -135,14 +143,29 @@ def calculate_gene_splits(
         .unique()
     )
     if split_strategy == "mean":
-        len_5utr = df["start_codon_pos"].mean()
-        len_cds = df["stop_codon_pos"].mean() - df["start_codon_pos"].mean()
-        len_3utr = df["transcript_length"].mean() - df["stop_codon_pos"].mean()
+        # Cast to numeric first to ensure we get numeric types
+        start_mean = df.select(pl.col("start_codon_pos").cast(pl.Float64).mean()).item()
+        stop_mean = df.select(pl.col("stop_codon_pos").cast(pl.Float64).mean()).item()
+        length_mean = df.select(pl.col("transcript_length").cast(pl.Float64).mean()).item()
+        
+        len_5utr = float(start_mean or 0)
+        len_cds = float(stop_mean or 0) - float(start_mean or 0)
+        len_3utr = float(length_mean or 0) - float(stop_mean or 0)
     elif split_strategy == "median":
-        len_5utr = df["start_codon_pos"].median()
-        len_cds = df["stop_codon_pos"].median() - df["start_codon_pos"].median()
-        len_3utr = df["transcript_length"].median() - df["stop_codon_pos"].median()
+        # Cast to numeric first to ensure we get numeric types
+        start_median = df.select(pl.col("start_codon_pos").cast(pl.Float64).median()).item()
+        stop_median = df.select(pl.col("stop_codon_pos").cast(pl.Float64).median()).item()
+        length_median = df.select(pl.col("transcript_length").cast(pl.Float64).median()).item()
+        
+        len_5utr = float(start_median or 0)
+        len_cds = float(stop_median or 0) - float(start_median or 0)
+        len_3utr = float(length_median or 0) - float(stop_median or 0)
+    else:
+        raise ValueError(f"Unknown split_strategy: {split_strategy}")
+        
     len_total = len_5utr + len_cds + len_3utr
+    if len_total == 0:
+        return (0.0, 0.0, 0.0)
     return len_5utr / len_total, len_cds / len_total, len_3utr / len_total
 
 
@@ -206,7 +229,7 @@ def normalize_positions(
         .with_columns(feature_weight=1 / pl.len().over("record_id"))
         .with_columns(
             feature_bin=pl.col("feature_pos").cut(
-                breaks=np.linspace(0, 1, bin_number + 1)
+                breaks=np.linspace(0, 1, bin_number + 1).tolist()
             )
         )
     )
@@ -278,8 +301,8 @@ def show_summary_stats(df: pl.DataFrame) -> str:
     # Combine all parts into a single string
     summary = (
         f"Total sites passed the filter: {total_passed} / {total_sites} ({pass_percentage:.1f}%)\n\n"
-        f"Feature Distribution:\n  " + "\n  ".join(feature_dist) + "\n\n"
-        f"Position Statistics:\n  " + "\n  ".join(pos_stats)
+        f"Feature Distribution:\n  " + "\n  ".join(feature_dist) + "\n\n" +
+        "Position Statistics:\n  " + "\n  ".join(pos_stats)
     )
 
     return summary

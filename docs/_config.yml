@@ -3,51 +3,20 @@ description: A Python package for metagene profiling analysis and visualization
 baseurl: "/metagene"
 url: "https://y9c.github.io"
 
-# Build settings
 remote_theme: just-the-docs/just-the-docs
-color_scheme: nil
+ga_tracking: G-EFHY8WFMHK
+ga_tracking_anonymize_ip: true
+color_scheme: light
+favicon_ico: '/favicon.ico'
+footer_content: 'Copyright &copy; 2021-2025, Chang Ye'
 
-# Plugins
+callouts:
+  warning:
+    title: Warning
+    color: red
+  note:
+    title: Note
+    color: green
+
 plugins:
-  - jekyll-feed
-  - jekyll-sitemap
-
-# Just the Docs configuration
-search_enabled: true
-heading_anchors: true
-nav_external_links:
-  - title: GitHub Repository
-    url: https://github.com/y9c/metagene
-    hide_icon: false
-
-# Footer content
-footer_content: "Copyright &copy; 2024 Ye Chang. Distributed under the <a href=\"https://github.com/y9c/metagene/blob/main/LICENSE\">MIT License</a>."
-
-# Navigation structure
-nav_sort: case_insensitive
-
-# Code highlighting
-kramdown:
-  syntax_highlighter: rouge
-  syntax_highlighter_opts:
-    block:
-      line_numbers: false
-
-# Collections for organizing docs
-collections:
-  guides:
-    permalink: "/:collection/:name/"
-    output: true
-
-defaults:
-  - scope:
-      path: ""
-      type: "pages"
-    values:
-      layout: "default"
-  - scope:
-      path: ""
-      type: "guides"
-    values:
-      layout: "default"
-      parent: "Guides"
+  - jekyll-spaceship
