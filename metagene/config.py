@@ -27,7 +27,7 @@ BUILTIN_REFERENCES: dict[str, ReferenceInfo] = {
         "description": "Human genome GRCh38 (Ensembl release 110)"
     },
     "hg38": {
-        "parquet_file": "GRCh38.parquet",
+        "parquet_file": "hg38.parquet",
         "source_file": "Homo_sapiens/raw/hg38.20221028.gtf.gz",
         "description": "Human genome hg38 (UCSC 2022)"
     },
@@ -37,7 +37,7 @@ BUILTIN_REFERENCES: dict[str, ReferenceInfo] = {
         "description": "Human genome GRCh37 (Ensembl release 75)"
     },
     "hg19": {
-        "parquet_file": "GRCh37.parquet",
+        "parquet_file": "hg19.parquet",
         "source_file": "Homo_sapiens/raw/hg19.20210517.gtf.gz",
         "description": "Human genome hg19 (UCSC 2021)"
     },
@@ -48,7 +48,7 @@ BUILTIN_REFERENCES: dict[str, ReferenceInfo] = {
         "description": "Mouse genome GRCm39 (Ensembl release 110)"
     },
     "mm39": {
-        "parquet_file": "GRCm39.parquet",
+        "parquet_file": "mm39.parquet",
         "source_file": "Mus_musculus/raw/mm39.20240214.gtf.gz",
         "description": "Mouse genome mm39 (UCSC 2024)"
     },
@@ -58,7 +58,7 @@ BUILTIN_REFERENCES: dict[str, ReferenceInfo] = {
         "description": "Mouse genome GRCm38 (Ensembl release 102)"
     },
     "mm10": {
-        "parquet_file": "GRCm38.parquet",
+        "parquet_file": "mm10.parquet",
         "source_file": "Mus_musculus/raw/mm10.20210423.gtf.gz",
         "description": "Mouse genome mm10 (UCSC 2021)"
     },
@@ -68,7 +68,7 @@ BUILTIN_REFERENCES: dict[str, ReferenceInfo] = {
         "description": "Mouse genome mm9 (UCSC 2020)"
     },
     "NCBIM37": {
-        "parquet_file": "mm9.parquet",
+        "parquet_file": "NCBIM37.parquet",
         "source_file": "Mus_musculus/raw/NCBIM37.release67.gtf.gz",
         "description": "Mouse genome NCBIM37 (Ensembl release 67)"
     },
@@ -89,7 +89,7 @@ BUILTIN_REFERENCES: dict[str, ReferenceInfo] = {
         "description": "C. elegans WBcel235"
     },
     "ce11": {
-        "parquet_file": "WBcel235.parquet",
+        "parquet_file": "ce11.parquet",
         "source_file": "Caenorhabditis_elegans/raw/ce11.20200110.gtf.gz",
         "description": "C. elegans ce11 (UCSC)"
     },
@@ -99,7 +99,7 @@ BUILTIN_REFERENCES: dict[str, ReferenceInfo] = {
         "description": "D. melanogaster BDGP6.32"
     },
     "dm6": {
-        "parquet_file": "BDGP6.32.parquet",
+        "parquet_file": "dm6.parquet",
         "source_file": "Drosophila_melanogaster/raw/dm6.20210210.gtf.gz",
         "description": "D. melanogaster dm6 (UCSC)"
     },
@@ -129,7 +129,7 @@ BUILTIN_REFERENCES: dict[str, ReferenceInfo] = {
         "description": "S. cerevisiae R64-1-1"
     },
     "sacCer3": {
-        "parquet_file": "R64-1-1.parquet",
+        "parquet_file": "sacCer3.parquet",
         "source_file": "Saccharomyces_cerevisiae/raw/sacCer3.20210210.gtf.gz",
         "description": "S. cerevisiae sacCer3 (UCSC)"
     },
