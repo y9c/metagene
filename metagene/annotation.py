@@ -111,8 +111,8 @@ def map_to_transcripts(
     return annotated_sites
 
 
-def calcualte_gene_splits(
-    annotated_sites: pr.PyRanges, strategy: str = "mean"
+def calculate_gene_splits(
+    annotated_sites: pl.DataFrame, split_strategy: str = "mean"
 ) -> tuple:
     """
     Calculate gene region splits (5'UTR, CDS, 3'UTR) from annotated sites.
@@ -124,11 +124,11 @@ def calcualte_gene_splits(
         .drop_nulls()
         .unique()
     )
-    if strategy == "mean":
+    if split_strategy == "mean":
         len_5utr = df["start_codon_pos"].mean()
         len_cds = df["stop_codon_pos"].mean() - df["start_codon_pos"].mean()
         len_3utr = df["transcript_length"].mean() - df["stop_codon_pos"].mean()
-    elif strategy == "median":
+    elif split_strategy == "median":
         len_5utr = df["start_codon_pos"].median()
         len_cds = df["stop_codon_pos"].median() - df["start_codon_pos"].median()
         len_3utr = df["transcript_length"].median() - df["stop_codon_pos"].median()
@@ -146,7 +146,7 @@ def normalize_positions(
     # check if the "transcript_id", "transcript_start" and  "transcript_end" in the dataframe columns
     # use the mid point of transcript_start and transcript_end as transcript_pos
 
-    gene_splits = calcualte_gene_splits(annotated_sites, split_strategy)
+    gene_splits = calculate_gene_splits(annotated_sites, split_strategy)
 
     gene_stats = (
         annotated_sites.with_columns(
