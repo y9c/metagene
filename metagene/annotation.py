@@ -23,6 +23,14 @@ def map_to_transcripts(
         qry, suffix="_qry", join_type="inner", strand_behavior="same"
     )
 
+    # Check here, if the join returned no results, raise an error
+    # please check if you have valide input sites or chosen the correct exon reference
+    if annot.empty:
+        raise ValueError(
+            "No overlaps found between input sites and exon reference. "
+            "Please check your input data and exon reference are matching."
+        )
+
     annot = pl.DataFrame(annot)
     # Add reference columns
     annot = annot.with_columns(
