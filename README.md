@@ -5,7 +5,8 @@
 
 **Metagene Profiling Analysis and Visualization**
 
-A Python package for performing metagene analysis on genomic sites. This tool allows you to analyze the distribution of genomic features relative to gene regions (5'UTR, CDS, 3'UTR) and create publication-ready metagene profile plots.
+This tool allows you to analyze metagene, the distribution of genomic features relative to gene regions (5'UTR, CDS, 3'UTR) and create publication-ready metagene profile plots.
+
 
 ## Installation
 
@@ -190,3 +191,8 @@ The plot shows the distribution of genomic sites across normalized gene regions:
 - **5'UTR** (0.0 - first split): 5' untranslated region
 - **CDS** (first split - second split): Coding sequence  
 - **3'UTR** (second split - 1.0): 3' untranslated region
+
+## TODO:
+
+- [ ] How to 100k sites on human genome in less than 10s?
+- [ ] The core function should be move into [variant](https://github.com/y9c/variant)
