@@ -12,7 +12,7 @@ permalink: /
 A powerful Python package for metagene profiling analysis and visualization, featuring automatic reference downloading, rich CLI interface, and comprehensive plotting capabilities.
 {: .fs-6 .fw-300 }
 
-[Get started now]({{ site.baseurl }}{% link getting-started.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[Get started now](getting-started.md){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [View it on GitHub](https://github.com/y9c/metagene){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ---
@@ -102,6 +102,6 @@ Metagene analysis is a powerful technique for visualizing the distribution of ge
 
 ## Getting Help
 
-- 📖 **[Documentation]({{ site.baseurl }}{% link getting-started.md %})**: Complete guides and API reference
+- 📖 **[Documentation](getting-started.md)**: Complete guides and API reference
 - 🐛 **[Issues](https://github.com/y9c/metagene/issues)**: Report bugs or request features
 - 💬 **[Discussions](https://github.com/y9c/metagene/discussions)**: Ask questions and share ideas

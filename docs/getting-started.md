@@ -250,7 +250,7 @@ metagene.plot_profile(gene_bins, gene_splits, "custom_analysis.png")
 
 ## Next Steps
 
-- 📖 **[API Reference]({{ site.baseurl }}{% link api-reference.md %})**: Detailed function documentation
-- 🎨 **[Plotting Guide]({{ site.baseurl }}{% link plotting.md %})**: Customizing your visualizations
-- 🔧 **[Advanced Usage]({{ site.baseurl }}{% link advanced.md %})**: Power user features
-- 💡 **[Examples]({{ site.baseurl }}{% link examples.md %})**: More complete workflows
+- 📖 **[API Reference](api-reference.md)**: Detailed function documentation
+- 🎨 **[Plotting Guide](plotting.md)**: Customizing your visualizations
+- 🔧 **[Advanced Usage](advanced.md)**: Power user features
+- 💡 **[Examples](examples.md)**: More complete workflows
