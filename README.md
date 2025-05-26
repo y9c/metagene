@@ -14,12 +14,7 @@ Install metagene using pip:
 ```bash
 pip install metagene
 ```
-
-Or using uv:
-
-```bash
-uv add metagene
-```
+minimal python version requirement: 3.12
 
 ## Quick Start
 
@@ -58,13 +53,16 @@ reference = load_reference("GRCh38")  # or load_gtf("custom.gtf.gz")
 
 # Perform metagene analysis
 annotated_df = map_to_transcripts(sites_df, reference)
-final_df, gene_splits = normalize_positions(annotated_df, strategy="median")
+gene_bins, gene_stats, gene_splits = normalize_positions(
+    annotated_df, split_strategy="median", bin_number=100
+)
 
 # Generate plot
-plot_profile(final_df, gene_splits, "metagene_plot.png")
+plot_profile(gene_bins, gene_splits, "metagene_plot.png")
 
-print(f"Analyzed {len(final_df)} sites")
+print(f"Analyzed {gene_bins['count'].sum()} sites")
 print(f"Gene splits - 5'UTR: {gene_splits[0]:.3f}, CDS: {gene_splits[1]:.3f}, 3'UTR: {gene_splits[2]:.3f}")
+print(f"Gene statistics - 5'UTR: {gene_stats['5UTR']}, CDS: {gene_stats['CDS']}, 3'UTR: {gene_stats['3UTR']}")
 ```
 
 ## Input Formats
@@ -91,16 +89,16 @@ chr1	1999999	2000000	score2	0.72	-
 
 Metagene includes pre-processed gene annotations for major model organisms:
 
-| Species | Assembly | Reference |
-|---------|----------|-----------|
-| **Human** | GRCh38/hg38 | `GRCh38`, `hg38` |
-| | GRCh37/hg19 | `GRCh37`, `hg19` |
-| **Mouse** | GRCm39/mm39 | `GRCm39`, `mm39` |
-| | GRCm38/mm10 | `GRCm38`, `mm10` |
-| | mm9/NCBIM37 | `mm9`, `NCBIM37` |
-| **Arabidopsis** | TAIR10 | `TAIR10` |
-| **Rice** | IRGSP-1.0 | `IRGSP-1.0` |
-| **Model Organisms** | Various | `dm6`, `ce11`, `WBcel235`, `sacCer3`, etc. |
+| Species             | Assembly    | Reference                                  |
+| ------------------- | ----------- | ------------------------------------------ |
+| **Human**           | GRCh38/hg38 | `GRCh38`, `hg38`                           |
+|                     | GRCh37/hg19 | `GRCh37`, `hg19`                           |
+| **Mouse**           | GRCm39/mm39 | `GRCm39`, `mm39`                           |
+|                     | GRCm38/mm10 | `GRCm38`, `mm10`                           |
+|                     | mm9/NCBIM37 | `mm9`, `NCBIM37`                           |
+| **Arabidopsis**     | TAIR10      | `TAIR10`                                   |
+| **Rice**            | IRGSP-1.0   | `IRGSP-1.0`                                |
+| **Model Organisms** | Various     | `dm6`, `ce11`, `WBcel235`, `sacCer3`, etc. |
 
 ### Managing References
 
@@ -187,10 +185,12 @@ reference = load_reference("GRCh38")
 
 # 2. Annotate and normalize  
 annotated = map_to_transcripts(sites, reference)
-normalized, splits = normalize_positions(annotated)
+gene_bins, gene_stats, gene_splits = normalize_positions(
+    annotated, split_strategy="median", bin_number=100
+)
 
 # 3. Visualize
-plot_profile(normalized, splits, "output.png")
+plot_profile(gene_bins, gene_splits, "output.png")
 ```
 
 ## Demo

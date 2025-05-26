@@ -75,10 +75,11 @@ reference = metagene.load_gtf("custom.gtf")
 results = metagene.map_to_transcripts(sites, reference)
 
 # Normalize positions relative to gene structure
-normalized = metagene.normalize_positions(results, region="all")
+gene_bins, gene_stats, gene_splits = metagene.normalize_positions(results, region="all")
 
 # Show summary statistics
-metagene.show_summary_stats(normalized)
+print(f"Gene splits - 5'UTR: {gene_splits[0]:.3f}, CDS: {gene_splits[1]:.3f}, 3'UTR: {gene_splits[2]:.3f}")
+print(f"Gene statistics - 5'UTR: {gene_stats['5UTR']}, CDS: {gene_stats['CDS']}, 3'UTR: {gene_stats['3UTR']}")
 ```
 
 #### 4. Generate Plots
@@ -86,9 +87,9 @@ metagene.show_summary_stats(normalized)
 ```python
 # Create metagene plot
 metagene.plot_profile(
-    normalized, 
-    output_path="metagene_plot.png",
-    title="My Metagene Analysis"
+    gene_bins, 
+    gene_splits,
+    output_path="metagene_plot.png"
 )
 ```
 
@@ -206,13 +207,13 @@ reference = metagene.load_reference("GRCh38")
 
 # Focus on 3' UTR regions
 results = metagene.map_to_transcripts(sites, reference)
-normalized = metagene.normalize_positions(results, region="3utr")
+gene_bins, gene_stats, gene_splits = metagene.normalize_positions(results, region="3utr")
 
 # Create publication-ready plot
 metagene.plot_profile(
-    normalized, 
-    "m6a_metagene.png",
-    title="m6A Distribution in 3' UTRs"
+    gene_bins, 
+    gene_splits,
+    "m6a_metagene.png"
 )
 ```
 
@@ -239,10 +240,10 @@ reference = metagene.load_gtf("custom_annotation.gtf")
 
 # Run analysis
 results = metagene.map_to_transcripts(sites, reference)
-normalized = metagene.normalize_positions(results)
+gene_bins, gene_stats, gene_splits = metagene.normalize_positions(results)
 
 # Generate plot
-metagene.plot_profile(normalized, "custom_analysis.png")
+metagene.plot_profile(gene_bins, gene_splits, "custom_analysis.png")
 ```
 
 ---

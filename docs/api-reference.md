@@ -96,37 +96,62 @@ Map genomic sites to transcript coordinates.
 
 ```python
 metagene.map_to_transcripts(
-    sites: PyRanges,
-    reference: PyRanges
-) -> PyRanges
+    input_sites: pr.PyRanges,
+    exon_ref: pr.PyRanges
+) -> pl.DataFrame
 ```
 
 **Parameters:**
-- `sites`: PyRanges with genomic sites
-- `reference`: PyRanges with gene/transcript annotations
+- `input_sites`: PyRanges with genomic sites (output from load_sites())
+- `exon_ref`: PyRanges with gene/transcript annotations (output from load_reference() or load_gtf())
 
 **Returns:**
-- PyRanges with transcript mapping information
+- Polars DataFrame with transcript mapping information including transcript coordinates
+
+**Example:**
+```python
+# Load data
+sites = metagene.load_sites("sites.tsv", with_header=True, meta_col_index=[0, 1, 2])
+reference = metagene.load_reference("GRCh38")
+
+# Map to transcripts  
+annotated = metagene.map_to_transcripts(sites, reference)
+```
 
 ### normalize_positions()
 
-Normalize positions relative to gene structure.
+Normalize transcript positions to relative feature positions (0-1 scale).
 
 ```python
 metagene.normalize_positions(
-    mapped_sites: PyRanges,
-    region: str = "all",
-    bins: int = 100
-) -> PyRanges
+    annotated_sites: pl.DataFrame,
+    split_strategy: str = "median",
+    bin_number: int = 100,
+    weight_col_index: list[int] | None = None
+) -> tuple[pl.DataFrame, dict, tuple]
 ```
 
 **Parameters:**
-- `mapped_sites`: Output from map_to_transcripts()
-- `region`: Target region ("all", "5utr", "cds", "3utr")
-- `bins`: Number of bins for normalization
+- `annotated_sites`: DataFrame from map_to_transcripts() with transcript coordinates
+- `split_strategy`: Strategy for calculating gene region splits ("median" or other)
+- `bin_number`: Number of bins for discretizing the normalized positions (default: 100)
+- `weight_col_index`: Optional list of column indices for weighting
 
 **Returns:**
-- PyRanges with normalized positions
+- Tuple of (gene_bins, gene_stats, gene_splits):
+  - `gene_bins`: DataFrame with normalized position bins and counts
+  - `gene_stats`: Dictionary with statistics for each feature type
+  - `gene_splits`: Tuple of (5'UTR ratio, CDS ratio, 3'UTR ratio)
+
+**Example:**
+```python
+gene_bins, gene_stats, gene_splits = metagene.normalize_positions(
+    annotated_sites, 
+    split_strategy="median", 
+    bin_number=100
+)
+print(f"5'UTR: {gene_splits[0]:.3f}, CDS: {gene_splits[1]:.3f}, 3'UTR: {gene_splits[2]:.3f}")
+```
 
 ### show_summary_stats()
 
@@ -145,25 +170,28 @@ metagene.show_summary_stats(data: PyRanges) -> None
 
 ### plot_profile()
 
-Generate a simple metagene profile plot.
+Generate a metagene profile plot.
 
 ```python
 metagene.plot_profile(
-    data: PyRanges,
+    gene_bins: pl.DataFrame,
+    gene_splits: tuple[float, float, float],
     output_path: str,
-    title: str = "Metagene Profile",
-    figsize: tuple = (10, 6),
-    color: str = "blue",
-    alpha: float = 0.7
+    figsize: tuple[int, int] = (10, 5)
 ) -> None
 ```
 
 **Parameters:**
-- `data`: Normalized data from normalize_positions()
+- `gene_bins`: DataFrame with binned data from normalize_positions()
+- `gene_splits`: Tuple of gene region ratios from normalize_positions()
 - `output_path`: Path for output image file
-- `title`: Plot title
-- `figsize`: Figure size (width, height)
-- `color`: Line color
+- `figsize`: Figure size (width, height) in inches
+
+**Example:**
+```python
+gene_bins, gene_stats, gene_splits = metagene.normalize_positions(annotated_sites)
+metagene.plot_profile(gene_bins, gene_splits, "metagene_plot.png")
+```
 - `alpha`: Line transparency
 
 ### plot_profile()

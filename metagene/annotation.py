@@ -9,7 +9,7 @@ import numpy as np
 
 
 def map_to_transcripts(
-    input_sites: pl.DataFrame, exon_ref: pr.PyRanges
+    input_sites: pr.PyRanges, exon_ref: pr.PyRanges
 ) -> pl.DataFrame:
     """
     Annotate input sites with transcript information using exon reference.

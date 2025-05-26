@@ -40,19 +40,17 @@ reference = metagene.load_reference("GRCh38")
 mapped = metagene.map_to_transcripts(sites, reference)
 
 # Focus on complete transcripts (5'UTR + CDS + 3'UTR)
-normalized = metagene.normalize_positions(
+gene_bins, gene_stats, gene_splits = metagene.normalize_positions(
     mapped, 
-    region="all", 
-    bins=300  # Higher resolution
+    split_strategy="median", 
+    bin_number=300  # Higher resolution
 )
 
 # Generate publication-ready plot
 metagene.plot_profile(
-    normalized,
-    "m6a_metagene_profile.png",
-    title="m6A Methylation Sites Distribution",
-    figsize=(12, 6),
-    color="darkred"
+    gene_bins,
+    gene_splits,
+    "m6a_metagene_profile.png"
 )
 
 # Show summary statistics
@@ -99,17 +97,16 @@ regions = ["5utr", "cds", "3utr"]
 colors = ["blue", "green", "orange"]
 
 for region, color in zip(regions, colors):
-    normalized = metagene.normalize_positions(
+    gene_bins, gene_stats, gene_splits = metagene.normalize_positions(
         mapped, 
         region=region, 
-        bins=100
+        bin_number=100
     )
     
     metagene.plot_profile(
-        normalized,
-        f"tfbs_{region}_profile.png",
-        title=f"TFBS Distribution - {region.upper()}",
-        color=color
+        gene_bins,
+        gene_splits,
+        f"tfbs_{region}_profile.png"
     )
 ```
 
@@ -141,8 +138,8 @@ datasets = {
 results = {}
 for condition, sites in datasets.items():
     mapped = metagene.map_to_transcripts(sites, reference)
-    normalized = metagene.normalize_positions(mapped, region="all")
-    results[condition] = normalized
+    gene_bins, gene_stats, gene_splits = metagene.normalize_positions(mapped, region="all")
+    results[condition] = gene_bins
 
 # Create combined plot
 fig, ax = plt.subplots(figsize=(12, 6))
@@ -184,13 +181,13 @@ reference = metagene.load_gtf("lncRNA_annotations.gtf")
 
 # Standard analysis workflow
 mapped = metagene.map_to_transcripts(sites, reference)
-normalized = metagene.normalize_positions(mapped, region="all")
+gene_bins, gene_stats, gene_splits = metagene.normalize_positions(mapped, region="all")
 
 # Generate plot
 metagene.plot_profile(
-    normalized,
-    "lncRNA_analysis.png",
-    title="Sites Distribution on lncRNAs"
+    gene_bins,
+    gene_splits,
+    "lncRNA_analysis.png"
 )
 ```
 
@@ -213,18 +210,17 @@ reference = metagene.load_reference("GRCh38")
 mapped = metagene.map_to_transcripts(sites, reference)
 
 # Focus on CDS with high resolution
-normalized = metagene.normalize_positions(
+gene_bins, gene_stats, gene_splits = metagene.normalize_positions(
     mapped, 
     region="cds", 
-    bins=500  # Very high resolution
+    bin_number=500  # Very high resolution
 )
 
 # Create detailed plot
 metagene.plot_profile(
-    normalized,
-    "high_res_cds.png",
-    title="High-Resolution CDS Profile",
-    figsize=(15, 8)
+    gene_bins,
+    gene_splits,
+    "high_res_cds.png"
 )
 ```
 
@@ -257,19 +253,19 @@ for bed_file in input_dir.glob("*.bed"):
     # Load and analyze
     sites = metagene.load_sites(str(bed_file))
     mapped = metagene.map_to_transcripts(sites, reference)
-    normalized = metagene.normalize_positions(mapped)
+    gene_bins, gene_stats, gene_splits = metagene.normalize_positions(mapped)
     
     # Save results
     output_file = output_dir / f"{sample_name}_results.tsv"
     plot_file = output_dir / f"{sample_name}_plot.png"
     
     # Save normalized data (implementation depends on format)
-    # normalized.to_csv(output_file, sep='\t')
+    # gene_bins.to_csv(output_file, sep='\t')
     
     metagene.plot_profile(
-        normalized,
-        str(plot_file),
-        title=f"Metagene Profile - {sample_name}"
+        gene_bins,
+        gene_splits,
+        str(plot_file)
     )
     
     print(f"Results saved to {output_file}")
@@ -327,8 +323,8 @@ print(f"Strand distribution: {strand_counts}")
 
 # Proceed with analysis only if mapping rate is acceptable
 if mapping_rate > 50:  # Threshold
-    normalized = metagene.normalize_positions(mapped)
-    metagene.plot_profile(normalized, "qc_passed_plot.png")
+    gene_bins, gene_stats, gene_splits = metagene.normalize_positions(mapped)
+    metagene.plot_profile(gene_bins, gene_splits, "qc_passed_plot.png")
 else:
     print("Warning: Low mapping rate, check input data quality")
 ```
@@ -354,7 +350,7 @@ sns.set_palette("husl")
 sites = metagene.load_sites("sites.bed")
 reference = metagene.load_reference("GRCh38")
 mapped = metagene.map_to_transcripts(sites, reference)
-normalized = metagene.normalize_positions(mapped)
+gene_bins, gene_stats, gene_splits = metagene.normalize_positions(mapped)
 
 # Create custom plot
 fig, ax = plt.subplots(figsize=(10, 6))
@@ -362,12 +358,9 @@ fig, ax = plt.subplots(figsize=(10, 6))
 # Plot with custom styling
 # (This would use internal plotting functions)
 metagene.plot_profile(
-    normalized,
-    "publication_ready.png",
-    title="Metagene Analysis",
-    figsize=(10, 6),
-    color="#2E86AB",
-    alpha=0.8
+    gene_bins,
+    gene_splits,
+    "publication_ready.png"
 )
 
 # Add additional styling
@@ -400,8 +393,8 @@ def process_large_file(filename, chunk_size=10000):
     for chunk in read_file_chunks(filename, chunk_size):
         sites = metagene.load_sites(chunk)
         mapped = metagene.map_to_transcripts(sites, reference)
-        normalized = metagene.normalize_positions(mapped)
-        results.append(normalized)
+        gene_bins, gene_stats, gene_splits = metagene.normalize_positions(mapped)
+        results.append(gene_bins)
     
     # Combine results
     combined = combine_results(results)
@@ -422,11 +415,11 @@ reference = metagene.load_reference("GRCh38")
 mapped = metagene.map_to_transcripts(sites, reference)
 
 for bins in bin_sizes:
-    normalized = metagene.normalize_positions(mapped, bins=bins)
+    gene_bins, gene_stats, gene_splits = metagene.normalize_positions(mapped, bin_number=bins)
     metagene.plot_profile(
-        normalized,
-        f"test_bins_{bins}.png",
-        title=f"Bins: {bins}"
+        gene_bins,
+        gene_splits,
+        f"test_bins_{bins}.png"
     )
 ```
 
