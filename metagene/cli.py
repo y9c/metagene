@@ -381,10 +381,10 @@ def cli(
                 gene_bins.insert_column(
                     0,
                     pl.when(pl.col("feature_midpoint") < gene_splits[0])
-                    .then("5UTR")
+                    .then(pl.lit("5UTR"))
                     .when((pl.col("feature_midpoint") > gene_splits[1]))
-                    .then("3UTR")
-                    .otherwise("CDS")
+                    .then(pl.lit("3UTR"))
+                    .otherwise(pl.lit("CDS"))
                     .alias("feature_type"),
                 ).write_csv(output_score, separator=separator)
                 progress.console.log(
