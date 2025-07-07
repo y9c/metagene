@@ -6,24 +6,26 @@
 #
 # Command-line interface for metagene analysis
 
-import click
+import logging
 import sys
+
+import click
 import polars as pl
+from rich.console import Console
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
     TextColumn,
-    BarColumn,
     TimeElapsedColumn,
 )
-from rich.console import Console
-import logging
 
-from .io import load_sites, load_reference
 from .annotation import map_to_transcripts, normalize_positions
-from .gtf import load_gtf
-from .download import download_references, list_references as show_references
 from .config import BUILTIN_REFERENCES
+from .download import download_references
+from .download import list_references as show_references
+from .gtf import load_gtf
+from .io import load_reference, load_sites
 from .plotting import plot_profile
 from .utils import NewlineRichHandler
 
@@ -257,7 +259,7 @@ def cli(
     try:
         # Initialize variable with proper type
         exon_ref: pl.DataFrame
-        
+
         # Validate that exactly one of reference or gtf is provided
         if reference and gtf:
             console.print(
@@ -277,7 +279,9 @@ def cli(
             if reference in BUILTIN_REFERENCES:
                 console.print(f"[cyan]Checking reference '{reference}'...")
                 exon_ref_result = load_reference(reference)
-                if exon_ref_result is None or not isinstance(exon_ref_result, pl.DataFrame):
+                if exon_ref_result is None or not isinstance(
+                    exon_ref_result, pl.DataFrame
+                ):
                     console.print(
                         f"[red]✗[/red] Failed to load reference '{reference}'"
                     )
@@ -348,14 +352,16 @@ def cli(
 
             if output_score or output_figure:
                 gene_bins, gene_stats, gene_splits = normalize_positions(
-                    annotated_df, split_strategy="median", bin_number=bins, weight_col_index=weight_col_index
+                    annotated_df,
+                    split_strategy="median",
+                    bin_number=bins,
+                    weight_col_index=weight_col_index,
                 )
                 progress.console.log(
                     f"[green]✓[/green] Normalized {gene_stats['5UTR'] + gene_stats['CDS'] + gene_stats['3UTR']} positions"
                 )
                 progress.console.log(
                     f"Gene splits - 5'UTR: {gene_splits[0]:.3f}, CDS: {gene_splits[1]:.3f}, 3'UTR: {gene_splits[2]:.3f}"
-                
                 )
 
             # Step 5: Save results
@@ -371,7 +377,16 @@ def cli(
 
             # Save score statistics (if requested)
             if output_score:
-                gene_bins.write_csv(output_score, separator=separator)
+                # insert (insert_column) a new feature_type column after the first column
+                gene_bins.insert_column(
+                    0,
+                    pl.when(pl.col("feature_midpoint") < gene_splits[0])
+                    .then("5UTR")
+                    .when((pl.col("feature_midpoint") > gene_splits[1]))
+                    .then("3UTR")
+                    .otherwise("CDS")
+                    .alias("feature_type"),
+                ).write_csv(output_score, separator=separator)
                 progress.console.log(
                     f"[green]✓[/green] Saved binned statistics to: {output_score}"
                 )
