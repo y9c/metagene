@@ -382,7 +382,9 @@ def cli(
                     0,
                     pl.when(pl.col("feature_midpoint") < gene_splits[0])
                     .then(pl.lit("5UTR"))
-                    .when((pl.col("feature_midpoint") > gene_splits[1]))
+                    .when(
+                        (pl.col("feature_midpoint") > gene_splits[0] + gene_splits[1])
+                    )
                     .then(pl.lit("3UTR"))
                     .otherwise(pl.lit("CDS"))
                     .alias("feature_type"),
