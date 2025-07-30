@@ -29,15 +29,16 @@ Examples:
     python process_gtf_to_parquet.py --all
 """
 
+import argparse
 import os
 import sys
-import argparse
 import time
 from pathlib import Path
 from typing import Optional
+
 import numpy as np
-import pyranges as pr
 import polars as pl
+import pyranges as pr
 
 
 def prepare_exon_ref(gtf_file: str) -> pr.PyRanges:
@@ -145,7 +146,7 @@ def prepare_exon_ref(gtf_file: str) -> pr.PyRanges:
 
     # generate cumulative exon lengths
     pr_exon = pr_exon.group_cumsum(
-        match_by=["gene_id", "transcript_id"],
+        group_by=["gene_id", "transcript_id"],
         use_strand=True,
         cumsum_start_column="Start_exon",
         cumsum_end_column="End_exon",

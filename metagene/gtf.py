@@ -6,13 +6,15 @@
 #
 # Created: 2023-03-08 20:46
 
-import numpy as np
-import pyranges as pr
-import os
-import polars as pl
 import logging
+import os
+
+import numpy as np
+import polars as pl
+import pyranges as pr
 from rich.console import Console
-from .utils import get_cache_dir, get_file_hash, ensure_dir, NewlineRichHandler
+
+from .utils import NewlineRichHandler, ensure_dir, get_cache_dir, get_file_hash
 
 # Set up rich console
 console = Console()
@@ -51,7 +53,9 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
             },
         )
     except Exception as e:
-        logger.error(f"[red]✗[/red] Error reading GTF with Polars: {e}. Consider checking GTF format.")
+        logger.error(
+            f"[red]✗[/red] Error reading GTF with Polars: {e}. Consider checking GTF format."
+        )
         raise
 
     # Filter out non-exon features
@@ -131,7 +135,7 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
 
     # generate cumulative exon lengths
     pr_exon = pr_exon.group_cumsum(
-        match_by=["gene_id", "transcript_id"],
+        group_by=["gene_id", "transcript_id"],
         use_strand=True,
         cumsum_start_column="Start_exon",
         cumsum_end_column="End_exon",
@@ -199,11 +203,11 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
 def load_gtf(gtf_file: str, use_cache: bool = True) -> pl.DataFrame:
     """
     Load and process a GTF file to a Polars DataFrame with caching support.
-    
+
     Args:
         gtf_file: Path to the GTF file
         use_cache: Whether to use caching for faster loading
-        
+
     Returns:
         Polars DataFrame with processed exon information
     """
@@ -225,10 +229,12 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pl.DataFrame:
         # Check if cache file is newer than the GTF file
         gtf_mtime = os.path.getmtime(gtf_file_abs)
         cache_mtime = os.path.getmtime(local_cache_filepath)
-        
+
         if cache_mtime > gtf_mtime:
             try:
-                logger.info(f"[cyan]Loading local cached reference from: {local_cache_filepath}[/cyan]")
+                logger.info(
+                    f"[cyan]Loading local cached reference from: {local_cache_filepath}[/cyan]"
+                )
                 df = pl.read_parquet(local_cache_filepath)
                 return df
             except Exception as e:
@@ -236,17 +242,23 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pl.DataFrame:
                     f"[yellow]⚠[/yellow] Error loading local cache file {local_cache_filepath}: {e}. Attempting default cache."
                 )
         else:
-            logger.info(f"[yellow]⚠[/yellow] Local cache file is older than GTF file. Checking default cache for: {gtf_file}")
+            logger.info(
+                f"[yellow]⚠[/yellow] Local cache file is older than GTF file. Checking default cache for: {gtf_file}"
+            )
             # Remove old local cache file
             try:
                 os.remove(local_cache_filepath)
             except Exception as e:
-                logger.warning(f"[yellow]⚠[/yellow] Could not remove old local cache file: {e}")
+                logger.warning(
+                    f"[yellow]⚠[/yellow] Could not remove old local cache file: {e}"
+                )
 
     try:
         cache_dir = get_cache_dir()
     except OSError as e:
-        logger.error(f"[red]✗[/red] Could not create cache directory: {e}. Processing without caching.")
+        logger.error(
+            f"[red]✗[/red] Could not create cache directory: {e}. Processing without caching."
+        )
         df_result = prepare_exon_ref(gtf_file)
         return df_result
 
@@ -260,10 +272,12 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pl.DataFrame:
         # Check if cache file is newer than the GTF file
         gtf_mtime = os.path.getmtime(gtf_file_abs)
         cache_mtime = os.path.getmtime(default_cache_filepath)
-        
+
         if cache_mtime > gtf_mtime:
             try:
-                logger.info(f"[cyan]Loading default cached reference from: {default_cache_filepath}[/cyan]")
+                logger.info(
+                    f"[cyan]Loading default cached reference from: {default_cache_filepath}[/cyan]"
+                )
                 df = pl.read_parquet(default_cache_filepath)
                 return df
             except Exception as e:
@@ -271,12 +285,16 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pl.DataFrame:
                     f"[yellow]⚠[/yellow] Error loading default cache file {default_cache_filepath}: {e}. Processing without caching."
                 )
         else:
-            logger.info(f"[yellow]⚠[/yellow] Cache file is older than GTF file. Rebuilding cache for: {gtf_file}")
+            logger.info(
+                f"[yellow]⚠[/yellow] Cache file is older than GTF file. Rebuilding cache for: {gtf_file}"
+            )
             # Remove old cache file
             try:
                 os.remove(default_cache_filepath)
             except Exception as e:
-                logger.warning(f"[yellow]⚠[/yellow] Could not remove old cache file: {e}")
+                logger.warning(
+                    f"[yellow]⚠[/yellow] Could not remove old cache file: {e}"
+                )
 
     # If we get here, we need to process the GTF file
     logger.info(f"[cyan]Processing GTF file: {gtf_file}[/cyan]")
@@ -285,21 +303,33 @@ def load_gtf(gtf_file: str, use_cache: bool = True) -> pl.DataFrame:
     # Try to save to local cache first (same directory as GTF file)
     local_cache_saved = False
     try:
-        logger.info(f"[cyan]Attempting to save processed reference to local cache: {local_cache_filepath}[/cyan]")
+        logger.info(
+            f"[cyan]Attempting to save processed reference to local cache: {local_cache_filepath}[/cyan]"
+        )
         df_result.write_parquet(local_cache_filepath)
         local_cache_saved = True
-        logger.info(f"[green]✓[/green] Successfully saved to local cache: {local_cache_filepath}")
+        logger.info(
+            f"[green]✓[/green] Successfully saved to local cache: {local_cache_filepath}"
+        )
     except Exception as e:
-        logger.warning(f"[yellow]⚠[/yellow] Could not save to local cache {local_cache_filepath}: {e}. Trying default cache directory.")
+        logger.warning(
+            f"[yellow]⚠[/yellow] Could not save to local cache {local_cache_filepath}: {e}. Trying default cache directory."
+        )
 
     # If local cache failed, try default cache directory
     if not local_cache_saved:
         try:
-            logger.info(f"[cyan]Saving processed reference to default cache: {default_cache_filepath}[/cyan]")
+            logger.info(
+                f"[cyan]Saving processed reference to default cache: {default_cache_filepath}[/cyan]"
+            )
             df_result.write_parquet(default_cache_filepath)
-            logger.info(f"[green]✓[/green] Successfully saved to default cache: {default_cache_filepath}")
+            logger.info(
+                f"[green]✓[/green] Successfully saved to default cache: {default_cache_filepath}"
+            )
         except Exception as e:
-            logger.warning(f"[yellow]⚠[/yellow] Could not save to default cache: {e}. Proceeding without caching.")
+            logger.warning(
+                f"[yellow]⚠[/yellow] Could not save to default cache: {e}. Proceeding without caching."
+            )
 
     return df_result
 
@@ -327,7 +357,9 @@ chr1\tunknown\tstop_codon\t1800\t1802\t.\t+\t.\ttranscript_id "test_transcript";
 
     logger.info(f"[cyan]Processing GTF file with caching: {test_gtf_path}[/cyan]")
     df_result = load_gtf(test_gtf_path)
-    logger.info("[green]✓[/green] Processing complete. Resulting Polars DataFrame (first call):")
+    logger.info(
+        "[green]✓[/green] Processing complete. Resulting Polars DataFrame (first call):"
+    )
     if df_result is not None and len(df_result) > 0:
         logger.info(str(df_result.head()))
     else:
@@ -341,13 +373,19 @@ chr1\tunknown\tstop_codon\t1800\t1802\t.\t+\t.\ttranscript_id "test_transcript";
     if df_result_cached is not None and len(df_result_cached) > 0:
         logger.info(str(df_result_cached.head()))
     else:
-        logger.warning("[yellow]⚠[/yellow] No data or empty dataframe returned on second call.")
+        logger.warning(
+            "[yellow]⚠[/yellow] No data or empty dataframe returned on second call."
+        )
 
     # Test with cache disabled
-    logger.info(f"[cyan]Processing GTF file with cache disabled: {test_gtf_path}[/cyan]")
+    logger.info(
+        f"[cyan]Processing GTF file with cache disabled: {test_gtf_path}[/cyan]"
+    )
     df_result_no_cache = load_gtf(test_gtf_path, use_cache=False)
     logger.info("[green]✓[/green] Resulting Polars DataFrame (cache disabled):")
     if df_result_no_cache is not None and len(df_result_no_cache) > 0:
         logger.info(str(df_result_no_cache.head()))
     else:
-        logger.warning("[yellow]⚠[/yellow] No data or empty dataframe returned with cache disabled.")
+        logger.warning(
+            "[yellow]⚠[/yellow] No data or empty dataframe returned with cache disabled."
+        )
