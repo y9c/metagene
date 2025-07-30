@@ -167,7 +167,7 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
     pr_codons = pr.PyRanges(pl_df_codons.to_pandas())
     # Join with exon reference and calculate positions
     df_codons = (
-        pr_exon.join_ranges(pr_codons, join_type="inner", match_by="transcript_id")  # type: ignore
+        pr_exon.join_overlaps(pr_codons, join_type="inner", match_by="transcript_id")  # type: ignore
         .assign(
             codon_pos=lambda df: np.where(
                 df["Strand"] == "+",

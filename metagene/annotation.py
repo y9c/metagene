@@ -25,7 +25,7 @@ def map_to_transcripts(
     exon_pr = pr.PyRanges(exon_ref.to_pandas())  # type: ignore
 
     # Perform join operation
-    annot_pr = exon_pr.join_ranges(  # type: ignore
+    annot_pr = exon_pr.join_overlaps(  # type: ignore
         input_pr,
         suffix="_qry",
         join_type="inner",

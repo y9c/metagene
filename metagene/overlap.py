@@ -92,10 +92,10 @@ def annotate_with_features(
     Returns:
         Tuple of (annotated dataframe, binned statistics)
     """
-    # Perform overlap using PyRanges v1 join_ranges
+    # Perform overlap using PyRanges v1 join_overlaps
     df_joined = (
         pr.PyRanges(df_input)
-        .join_ranges(
+        .join_overlaps(
             pr.PyRanges(df_feature),
             report_overlap_column="Overlap",
             strand_behavior="same" if by_strand else "ignore",
