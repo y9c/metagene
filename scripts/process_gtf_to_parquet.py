@@ -150,7 +150,7 @@ def prepare_exon_ref(gtf_file: str) -> pr.PyRanges:
         use_strand=True,
         cumsum_start_column="Start_exon",
         cumsum_end_column="End_exon",
-        sort=True,
+        keep_order=True,
     )
 
     # Extract both start and stop codons together
