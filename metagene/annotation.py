@@ -53,39 +53,39 @@ def map_to_transcripts(
         pl.col("Strand").alias("Strand_ref"),
     )
 
-    # Calculate new Start/End based on strand
+
     annot = annot.with_columns(
-        [
-            pl.when(pl.col("Strand_ref") == "+")
-            .then(
-                (pl.col("Start_qry") - pl.col("Start_ref")).clip(
-                    0, pl.col("End_exon") - pl.col("Start_exon")
-                )
-                + pl.col("Start_exon")
+    [
+        pl.when(pl.col("Strand_ref") == "+")
+        .then(
+            (pl.col("Start_qry") - pl.col("Start_ref")).clip(
+                0, pl.col("End_exon") - pl.col("Start_exon")
             )
-            .otherwise(
-                (pl.col("End_ref") - pl.col("End_qry")).clip(
-                    0, pl.col("End_exon") - pl.col("Start_exon")
-                )
-                + pl.col("Start_exon")
+            + pl.col("Start_exon")
+        )
+        .otherwise(
+            (pl.col("End_exon") - pl.col("End_qry")).clip(
+                0, pl.col("End_exon") - pl.col("Start_exon")
             )
-            .alias("transcript_start"),
-            pl.when(pl.col("Strand_ref") == "+")
-            .then(
-                (pl.col("End_qry") - pl.col("Start_ref")).clip(
-                    0, pl.col("End_exon") - pl.col("Start_exon")
-                )
-                + pl.col("Start_exon")
+        )
+        .alias("transcript_start"),
+
+        pl.when(pl.col("Strand_ref") == "+")
+        .then(
+            (pl.col("End_qry") - pl.col("Start_ref")).clip(
+                0, pl.col("End_exon") - pl.col("Start_exon")
             )
-            .otherwise(
-                (pl.col("End_ref") - pl.col("End_qry")).clip(
-                    0, pl.col("End_exon") - pl.col("Start_exon")
-                )
-                + pl.col("Start_exon")
+            + pl.col("Start_exon")
+        )
+        .otherwise(
+            # For minus strand: simply End_exon - Start_qry
+            (pl.col("End_exon") - pl.col("Start_qry")).clip(
+                0, pl.col("End_exon") - pl.col("Start_exon")
             )
-            .alias("transcript_end"),
-        ]
-    )
+        )
+        .alias("transcript_end"),
+    ]
+)
 
     # Use Polars groupby.apply to pick best transcript per gene
     def pick_best_transcript(df: pl.DataFrame) -> pl.DataFrame:
