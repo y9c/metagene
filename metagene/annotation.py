@@ -78,7 +78,7 @@ def map_to_transcripts(
                 + pl.col("Start_exon")
             )
             .otherwise(
-                (pl.col("End_ref") - pl.col("End_qry")).clip(
+                (pl.col("End_ref") - pl.col("Start_qry")).clip(
                     0, pl.col("End_exon") - pl.col("Start_exon")
                 )
                 + pl.col("Start_exon")
