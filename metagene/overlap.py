@@ -136,8 +136,8 @@ def annotate_with_features(
     else:
         unique_chroms = np.unique(np.concatenate([input_chroms, feature_chroms]))
         chrom_to_id = {chrom: i for i, chrom in enumerate(unique_chroms)}
-        input_groups = np.array([chrom_to_id[c] for c in input_chroms], dtype=np.uint32)
-        feature_groups = np.array([chrom_to_id[c] for c in feature_chroms], dtype=np.uint32)
+        input_groups = np.vectorize(chrom_to_id.get)(input_chroms).astype(np.uint32)
+        feature_groups = np.vectorize(chrom_to_id.get)(feature_chroms).astype(np.uint32)
     
     # Find overlaps
     idx_input, idx_feature = ruranges.overlaps(

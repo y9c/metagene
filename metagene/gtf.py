@@ -152,9 +152,10 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
         
         # Reorder based on idx to get back to original order
         result_df = group_df.with_row_index("_orig_idx")
+        sort_indices = np.argsort(idx)
         result_df = result_df.with_columns([
-            pl.Series("Start_exon", cumsum_start[np.argsort(idx)], dtype=pl.Int64),
-            pl.Series("End_exon", cumsum_end[np.argsort(idx)], dtype=pl.Int64),
+            pl.Series("Start_exon", cumsum_start[sort_indices], dtype=pl.Int64),
+            pl.Series("End_exon", cumsum_end[sort_indices], dtype=pl.Int64),
         ])
         return result_df.drop("_orig_idx")
     
@@ -194,11 +195,11 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
     codon_ends = pl_df_codons["End"].cast(pl.Int64).to_numpy()
     codon_chroms = pl_df_codons["Chromosome"].to_numpy()
     
-    # Create group IDs for chromosomes
+    # Create group IDs for chromosomes using vectorized operations
     unique_chroms = np.unique(np.concatenate([exon_chroms, codon_chroms]))
     chrom_to_id = {chrom: i for i, chrom in enumerate(unique_chroms)}
-    exon_groups = np.array([chrom_to_id[c] for c in exon_chroms], dtype=np.uint32)
-    codon_groups = np.array([chrom_to_id[c] for c in codon_chroms], dtype=np.uint32)
+    exon_groups = np.vectorize(chrom_to_id.get)(exon_chroms).astype(np.uint32)
+    codon_groups = np.vectorize(chrom_to_id.get)(codon_chroms).astype(np.uint32)
     
     # Find overlaps
     idx_exon, idx_codon = ruranges.overlaps(
