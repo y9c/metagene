@@ -4,7 +4,7 @@
 # Copyright © 2023 Ye Chang yech1990@gmail.com
 # Distributed under terms of the GNU license.
 #
-# Metagene Analysis Package - Refactored for PyRanges v1
+# Metagene Analysis Package - Using ruranges and polars
 
 # Core modules with clean API names
 from .gtf import prepare_exon_ref, load_gtf

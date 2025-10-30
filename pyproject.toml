@@ -8,8 +8,7 @@ readme = "README.md"
 license = "MIT"
 keywords = ["DNA", "RNA", "metagene", "biology"]
 dependencies = [
-  "pyranges1>=1.0.13",
-  "pandas>=2.2.3",
+  "ruranges>=0.0.14",
   "matplotlib>=3.0.0,<4",
   "polars>=1.30.0",
   "pyarrow",
