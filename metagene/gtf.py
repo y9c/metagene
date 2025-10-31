@@ -130,38 +130,37 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
         )
         .alias("transcript_level")
     ).drop(["tag", "transcript_support_level"])
-    
-    # Sort by chromosome, transcript_id, and position for proper cumsum calculation
-    pl_df_exon = pl_df_exon.sort(["Chromosome", "gene_id", "transcript_id", "Start"])
-    
-    # Generate cumulative exon lengths using ruranges
-    # Group by gene_id and transcript_id for cumsum
-    def apply_group_cumsum(group_df: pl.DataFrame) -> pl.DataFrame:
-        starts = group_df["Start"].cast(pl.Int64).to_numpy()
-        ends = group_df["End"].cast(pl.Int64).to_numpy()
-        negative_strand = (group_df["Strand"] == "-").to_numpy()
-        
-        # Call ruranges.group_cumsum
-        idx, cumsum_start, cumsum_end = ruranges.group_cumsum(
-            starts=starts,
-            ends=ends,
-            negative_strand=negative_strand,
-            groups=None,  # All in same group within this function
-            sort=True,
-        )
-        
-        # Reorder based on idx to get back to original order
-        result_df = group_df.with_row_index("_orig_idx")
-        sort_indices = np.argsort(idx)
-        result_df = result_df.with_columns([
-            pl.Series("Start_exon", cumsum_start[sort_indices], dtype=pl.Int64),
-            pl.Series("End_exon", cumsum_end[sort_indices], dtype=pl.Int64),
-        ])
-        return result_df.drop("_orig_idx")
-    
-    pl_df_exon = pl_df_exon.group_by(["gene_id", "transcript_id"], maintain_order=True).map_groups(
-        apply_group_cumsum
+
+    # Compute cumulative exon offsets using Polars window functions
+    # Order within each transcript depends on strand: '+' ascending Start; '-' descending Start
+    pl_df_exon = pl_df_exon.with_columns(
+        [
+            pl.when(pl.col("Strand") == "-")
+            .then((-pl.col("Start")).cast(pl.Int64))
+            .otherwise(pl.col("Start").cast(pl.Int64))
+            .alias("_order_key"),
+            (pl.col("End").cast(pl.Int64) - pl.col("Start").cast(pl.Int64)).alias(
+                "_exon_len"
+            ),
+        ]
     )
+
+    pl_df_exon = pl_df_exon.with_columns(
+        [
+            # cumulative sum ordered by strand-aware key, then shift to get start offset
+            (
+                pl.col("_exon_len")
+                .cum_sum()
+                .sort_by(pl.col("_order_key"))
+                .over(["gene_id", "transcript_id"])
+                - pl.col("_exon_len")
+            ).alias("Start_exon"),
+        ]
+    )
+
+    pl_df_exon = pl_df_exon.with_columns(
+        (pl.col("Start_exon") + pl.col("_exon_len")).alias("End_exon")
+    ).drop(["_order_key", "_exon_len"])
 
     # Extract both start and stop codons together
     pl_df_codons = (
@@ -190,17 +189,17 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
     exon_starts = pl_df_exon["Start"].cast(pl.Int64).to_numpy()
     exon_ends = pl_df_exon["End"].cast(pl.Int64).to_numpy()
     exon_chroms = pl_df_exon["Chromosome"].to_numpy()
-    
+
     codon_starts = pl_df_codons["Start"].cast(pl.Int64).to_numpy()
     codon_ends = pl_df_codons["End"].cast(pl.Int64).to_numpy()
     codon_chroms = pl_df_codons["Chromosome"].to_numpy()
-    
+
     # Create group IDs for chromosomes using vectorized operations
     unique_chroms = np.unique(np.concatenate([exon_chroms, codon_chroms]))
     chrom_to_id = {chrom: i for i, chrom in enumerate(unique_chroms)}
     exon_groups = np.vectorize(chrom_to_id.get)(exon_chroms).astype(np.uint32)
     codon_groups = np.vectorize(chrom_to_id.get)(codon_chroms).astype(np.uint32)
-    
+
     # Find overlaps
     idx_exon, idx_codon = ruranges.overlaps(
         starts=exon_starts,
@@ -210,20 +209,21 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
         groups=exon_groups,
         groups2=codon_groups,
     )
-    
+
     # Build overlapping pairs dataframe
-    overlaps_df = pl.DataFrame({
-        "exon_idx": idx_exon,
-        "codon_idx": idx_codon,
-    })
-    
+    overlaps_df = pl.DataFrame(
+        {
+            "exon_idx": idx_exon,
+            "codon_idx": idx_codon,
+        }
+    )
+
     # Join with original dataframes to get transcript_id and match by transcript_id
     exon_indexed = pl_df_exon.with_row_index("exon_idx")
     codon_indexed = pl_df_codons.with_row_index("codon_idx")
-    
+
     df_codons = (
-        overlaps_df
-        .join(exon_indexed, on="exon_idx")
+        overlaps_df.join(exon_indexed, on="exon_idx")
         .join(codon_indexed, on="codon_idx", suffix="_codon")
         .filter(pl.col("transcript_id") == pl.col("transcript_id_codon"))
         .with_columns(
@@ -234,35 +234,34 @@ def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
         )
         .select(["transcript_id", "Feature", "codon_pos"])
     )
-    
+
     # Pivot to get start_codon_pos and stop_codon_pos columns
-    pos_codon_df = (
-        df_codons
-        .pivot(
-            index="transcript_id",
-            on="Feature",
-            values="codon_pos",
-            aggregate_function="first",
-        )
+    pos_codon_df = df_codons.pivot(
+        index="transcript_id",
+        on="Feature",
+        values="codon_pos",
+        aggregate_function="first",
     )
-    
+
     # Rename columns to match expected format
     if "start_codon" in pos_codon_df.columns:
         pos_codon_df = pos_codon_df.rename({"start_codon": "start_codon_pos"})
     if "stop_codon" in pos_codon_df.columns:
         pos_codon_df = pos_codon_df.rename({"stop_codon": "stop_codon_pos"})
-    
+
     # Merge with exon reference
     pl_tx = pl_df_exon.join(pos_codon_df, on="transcript_id", how="left")
-    
+
     # Convert to Int32 to reduce size
-    pl_tx = pl_tx.with_columns([
-        pl.col("Start_exon").cast(pl.Int32),
-        pl.col("End_exon").cast(pl.Int32),
-        pl.col("start_codon_pos").cast(pl.Int32),
-        pl.col("stop_codon_pos").cast(pl.Int32),
-    ])
-    
+    pl_tx = pl_tx.with_columns(
+        [
+            pl.col("Start_exon").cast(pl.Int32),
+            pl.col("End_exon").cast(pl.Int32),
+            pl.col("start_codon_pos").cast(pl.Int32),
+            pl.col("stop_codon_pos").cast(pl.Int32),
+        ]
+    )
+
     return pl_tx
 
 

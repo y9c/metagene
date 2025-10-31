@@ -26,14 +26,14 @@ project_root = os.path.abspath(os.path.join(current_dir, ".."))
 sys.path.insert(0, project_root)
 
 # Import all necessary functions from metagene package
-from metagene import (
+from metagene import (  # noqa: E402
     load_gtf,
     map_to_transcripts,
     normalize_positions,
     load_sites,
     plot_profile,
 )
-from metagene.utils import setup_rich_logger
+from metagene.utils import setup_rich_logger  # noqa: E402
 
 # Set up rich logging for tests
 logger = setup_rich_logger("test_demo")
@@ -73,9 +73,11 @@ def main():
 
     # Step 4: Normalize feature positions using package function
     logger.info("Step 4: Normalizing feature positions...")
-    gene_bins, gene_stats, gene_splits = normalize_positions(annotated_df, split_strategy="median", bin_number=100)
+    gene_bins, gene_stats, gene_splits = normalize_positions(
+        annotated_df, split_strategy="median", bin_number=100
+    )
     logger.info(f"Normalized {gene_bins['count'].sum()} positions")
-    logger.info("Gene splits:") 
+    logger.info("Gene splits:")
     logger.info(f"  5'UTR: {gene_splits[0]:.3f}")
     logger.info(f"  CDS: {gene_splits[1]:.3f}")
     logger.info(f"  3'UTR: {gene_splits[2]:.3f}")

@@ -9,9 +9,8 @@ license = "MIT"
 keywords = ["DNA", "RNA", "metagene", "biology"]
 dependencies = [
   "ruranges>=0.0.14",
-  "matplotlib>=3.0.0,<4",
   "polars>=1.30.0",
-  "pyarrow",
+  "matplotlib>=3.0.0,<4",
   "rich-click>=1.6.1,<2",
 ]
 
@@ -20,6 +19,12 @@ Repository = "https://github.com/y9c/metagene"
 
 [project.scripts]
 metagene = "metagene.cli:cli"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+]
 
 [build-system]
 requires = ["hatchling"]
