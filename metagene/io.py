@@ -28,10 +28,10 @@ def load_sites(
     """
     df = pl.scan_csv(input_file_name, separator=separator, has_header=with_header)
     colnames = list(df.collect_schema())
-    
+
     if meta_col_index is None:
         raise ValueError("meta_col_index must be provided")
-    
+
     meta_col_names = [colnames[i] for i in meta_col_index]
     # check if the Chromosome, Start, End, Strand are in the colnames
     # if so add the _original_ prefix, and return a new list of colnames
@@ -81,10 +81,10 @@ def parse_feature_file(feature_file_name: str) -> pl.DataFrame:
 def load_reference(species: str | None = None) -> pl.DataFrame | dict:
     """
     Load built-in reference annotations for common species using Polars only.
-    
+
     Args:
         species: Species name to load, or None to get available species
-        
+
     Returns:
         Polars DataFrame with feature annotations, or dict of available species if species=None
     """
@@ -115,18 +115,31 @@ def load_reference(species: str | None = None) -> pl.DataFrame | dict:
     info = BUILTIN_REFERENCES[species]
     cache_dir = get_cache_dir()
     cache_path = cache_dir / Path(info["parquet_file"]).name
-    
+
     if cache_path.exists():
         return parse_feature_file(str(cache_path))
-    
-    # File doesn't exist - prompt user to download
+
+    # File doesn't exist - try non-interactive auto-download in CI/pytest/non-tty
     try:
         import click
         from .download import download_references
-        
+        import sys
+
         click.echo(f"Reference '{species}' not found locally.")
         click.echo(f"Description: {info['description']}")
-        
+        # If no tty (e.g., under pytest) or METAGENE_AUTO_DOWNLOAD=1, auto-download silently
+        auto_env = os.environ.get("METAGENE_AUTO_DOWNLOAD", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        if (hasattr(sys, "stdin") and not sys.stdin.isatty()) or auto_env:
+            try:
+                download_references(species, silent=True)
+                return parse_feature_file(str(cache_path))
+            except Exception as e:
+                raise RuntimeError(f"Failed to download {species}: {e}")
+
         if click.confirm("Would you like to download it now?", default=True):
             try:
                 download_references(species, silent=True)
@@ -134,9 +147,13 @@ def load_reference(species: str | None = None) -> pl.DataFrame | dict:
             except Exception as e:
                 raise RuntimeError(f"Failed to download {species}: {e}")
         else:
-            raise ValueError(f"Reference '{species}' is required but not available locally.")
+            raise ValueError(
+                f"Reference '{species}' is required but not available locally."
+            )
     except ImportError:
         # click not available, just raise an error
-        raise ValueError(f"Reference '{species}' not found locally and cannot prompt for download.")
-    
+        raise ValueError(
+            f"Reference '{species}' not found locally and cannot prompt for download."
+        )
+
     raise ValueError(f"Reference '{species}' not found locally.")

@@ -26,12 +26,12 @@ def test_buildin_grch38():
 
     # Define file paths
     current_dir = Path(__file__).parent
-    sites_file = current_dir / "sites.tsv.gz"
+    sites_file = current_dir / "sites_yeast.tsv.gz"
     meta_col_index = [0, 1, 2]
 
-    # Step 1: Load built-in reference (GRCh38)
-    logger.info("Step 1: Loading built-in reference (GRCh38)...")
-    exon_ref = load_reference("GRCh38")
+    # Step 1: Load a small built-in reference (yeast sacCer3)
+    logger.info("Step 1: Loading built-in reference (sacCer3)...")
+    exon_ref = load_reference("sacCer3")
 
     # Step 2: Load input sites
     logger.info("Step 2: Loading input sites...")
@@ -52,18 +52,19 @@ def test_buildin_grch38():
     gene_bins, gene_stats, gene_splits = normalize_positions(
         annotated_df, split_strategy="median", bin_number=200, weight_col_index=None
     )
-    logger.info(
-        f"Normalized {gene_stats['5UTR'] + gene_stats['CDS'] + gene_stats['3UTR']} positions"
+    total_norm = (
+        gene_stats.get("5UTR", 0) + gene_stats.get("CDS", 0) + gene_stats.get("3UTR", 0)
     )
+    logger.info(f"Normalized {total_norm} positions")
     logger.info("Gene splits:")
     logger.info(f"  5'UTR: {gene_splits[0]:.3f}")
     logger.info(f"  CDS: {gene_splits[1]:.3f}")
     logger.info(f"  3'UTR: {gene_splits[2]:.3f}")
     logger.info("Gene stats:")
-    logger.info(f"  Unknown: {gene_stats['None']}")
-    logger.info(f"  5'UTR: {gene_stats['5UTR']}")
-    logger.info(f"  CDS: {gene_stats['CDS']}")
-    logger.info(f"  3'UTR: {gene_stats['3UTR']}")
+    logger.info(f"  Unknown: {gene_stats.get('None', 0)}")
+    logger.info(f"  5'UTR: {gene_stats.get('5UTR', 0)}")
+    logger.info(f"  CDS: {gene_stats.get('CDS', 0)}")
+    logger.info(f"  3'UTR: {gene_stats.get('3UTR', 0)}")
 
     # Step 5: Generate plot
     logger.info("Step 5: Generating metagene profile plot...")

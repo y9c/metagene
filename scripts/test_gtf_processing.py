@@ -10,18 +10,17 @@ to ensure everything works before processing large files.
 import os
 import sys
 import tempfile
-import gzip
-from pathlib import Path
+from pathlib import Path  # noqa: F401  (may be useful later)
 
 # Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from process_gtf_to_parquet import process_gtf_file
 
 
 def create_test_gtf():
     """Create a test GTF file for validation."""
-    
+
     gtf_content = """##gtf-version 2.2
 ##provider: GENCODE
 ##format: gtf
@@ -41,69 +40,58 @@ chr1	GENCODE	exon	14000	15000	.	-	.	gene_id "ENSG00000002"; transcript_id "ENST0
 chr1	GENCODE	start_codon	14800	14802	.	-	.	gene_id "ENSG00000002"; transcript_id "ENST00000002";
 chr1	GENCODE	stop_codon	10200	10202	.	-	.	gene_id "ENSG00000002"; transcript_id "ENST00000002";
 """
-    
+
     # Create temporary GTF file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.gtf', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gtf", delete=False) as f:
         f.write(gtf_content)
         return f.name
 
 
 def test_processing():
     """Test the GTF processing pipeline."""
-    
+
     print("Creating test GTF file...")
     test_gtf = create_test_gtf()
-    
+
     try:
         print(f"Test GTF file created: {test_gtf}")
-        
+
         # Process the test file
         output_path = process_gtf_file(test_gtf, "test_output")
-        
-        if os.path.exists(output_path):
-            file_size = os.path.getsize(output_path) / 1024  # KB
-            print(f"\n✅ Test successful!")
-            print(f"Output file: {output_path}")
-            print(f"File size: {file_size:.2f} KB")
-            
-            # Test loading the file
-            try:
-                import polars as pl
-                df = pl.read_parquet(output_path)
-                print(f"Loaded DataFrame shape: {df.shape}")
-                print(f"Columns: {df.columns}")
-                print("\nFirst few rows:")
-                print(df.head())
-                
-                # Clean up
+
+        assert os.path.exists(output_path), "Output parquet file should be created"
+
+        # Test loading the file
+        import polars as pl
+
+        try:
+            df = pl.read_parquet(output_path)
+        finally:
+            # Clean up output file regardless of read success
+            if os.path.exists(output_path):
                 os.remove(output_path)
                 print(f"\nCleaned up: {output_path}")
-                
-            except Exception as e:
-                print(f"Error loading Parquet file: {e}")
-        else:
-            print("❌ Test failed: Output file not created")
-            
-    except Exception as e:
-        print(f"❌ Test failed: {e}")
-        return False
-    
+
+        # Basic sanity checks on dataframe
+        assert df.height > 0, "Parquet should contain rows"
+        assert {"Chromosome", "Start", "End"}.issubset(set(df.columns)), (
+            "Expected columns missing"
+        )
+
     finally:
         # Clean up test GTF file
         if os.path.exists(test_gtf):
             os.remove(test_gtf)
             print(f"Cleaned up: {test_gtf}")
-    
-    return True
 
 
-if __name__ == '__main__':
-    print("="*60)
+if __name__ == "__main__":
+    print("=" * 60)
     print("TESTING GTF TO PARQUET CONVERSION")
-    print("="*60)
-    
+    print("=" * 60)
+
     success = test_processing()
-    
+
     if success:
         print("\n🎉 Test completed successfully!")
         print("The GTF processing pipeline is working correctly.")

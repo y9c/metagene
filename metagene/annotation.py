@@ -5,7 +5,7 @@
 
 import numpy as np
 import polars as pl
-import pyranges as pr
+import ruranges
 
 
 def map_to_transcripts(
@@ -15,36 +15,84 @@ def map_to_transcripts(
     Annotate input sites with transcript information using exon reference.
     Returns a Polars DataFrame with transcript mapping.
     """
-    # Convert DataFrames to PyRanges for overlap operations
-    input_pandas = input_sites.select(
-        ["Chromosome", "Start", "End", "Strand"]
-    ).to_pandas()
-    input_pandas["_tmp_row_index"] = np.arange(0, len(input_pandas))
+    # Add row index to input sites for later joining
+    input_sites_indexed = input_sites.with_row_index("_tmp_row_index")
 
-    input_pr = pr.PyRanges(input_pandas)  # type: ignore
-    exon_pr = pr.PyRanges(exon_ref.to_pandas())  # type: ignore
+    # Prepare arrays for overlap detection
+    input_starts = input_sites_indexed["Start"].cast(pl.Int64).to_numpy()
+    input_ends = input_sites_indexed["End"].cast(pl.Int64).to_numpy()
+    input_chroms = input_sites_indexed["Chromosome"].to_numpy()
+    input_strands = input_sites_indexed["Strand"].to_numpy()
 
-    # Perform join operation
-    annot_pr = exon_pr.join_overlaps(  # type: ignore
-        input_pr,
-        suffix="_qry",
-        join_type="inner",
-        strand_behavior="same",  # type: ignore
+    exon_starts = exon_ref["Start"].cast(pl.Int64).to_numpy()
+    exon_ends = exon_ref["End"].cast(pl.Int64).to_numpy()
+    exon_chroms = exon_ref["Chromosome"].to_numpy()
+    exon_strands = exon_ref["Strand"].to_numpy()
+
+    # Create group IDs combining chromosome and strand for strand-aware overlaps
+    unique_chr_strand = np.unique(
+        np.concatenate(
+            [
+                np.char.add(input_chroms.astype(str), input_strands.astype(str)),
+                np.char.add(exon_chroms.astype(str), exon_strands.astype(str)),
+            ]
+        )
+    )
+    chr_strand_to_id = {cs: i for i, cs in enumerate(unique_chr_strand)}
+
+    input_groups = np.array(
+        [
+            chr_strand_to_id[c + s]
+            for c, s in zip(input_chroms.astype(str), input_strands.astype(str))
+        ],
+        dtype=np.uint32,
     )
 
-    # Check here, if the join returned no results, raise an error
-    # please check if you have valide input sites or chosen the correct exon reference
-    if hasattr(annot_pr, "empty") and annot_pr.empty:  # type: ignore
+    exon_groups = np.array(
+        [
+            chr_strand_to_id[c + s]
+            for c, s in zip(exon_chroms.astype(str), exon_strands.astype(str))
+        ],
+        dtype=np.uint32,
+    )
+
+    # Find overlaps
+    idx_exon, idx_input = ruranges.overlaps(
+        starts=exon_starts,
+        ends=exon_ends,
+        starts2=input_starts,
+        ends2=input_ends,
+        groups=exon_groups,
+        groups2=input_groups,
+    )
+
+    # Check if any overlaps were found
+    if len(idx_exon) == 0:
         raise ValueError(
             "No overlaps found between input sites and exon reference. "
             "Please check your input data and exon reference are matching."
         )
 
-    # Convert back to DataFrame
-    if hasattr(annot_pr, "df"):
-        annot = pl.DataFrame(annot_pr.df)  # type: ignore
-    else:
-        annot = pl.DataFrame(annot_pr)  # type: ignore
+    # Build overlapping pairs dataframe
+    overlaps_df = pl.DataFrame(
+        {
+            "exon_idx": idx_exon,
+            "input_idx": idx_input,
+        }
+    )
+
+    # Join with original dataframes
+    exon_indexed = exon_ref.with_row_index("exon_idx")
+
+    annot = overlaps_df.join(exon_indexed, on="exon_idx").join(
+        input_sites_indexed.select(
+            ["_tmp_row_index", "Chromosome", "Start", "End", "Strand"]
+        ),
+        left_on="input_idx",
+        right_on="_tmp_row_index",
+        suffix="_qry",
+    )
+
     # Add reference columns
     annot = annot.with_columns(
         pl.col("Chromosome").alias("Chromosome_ref"),
@@ -111,7 +159,9 @@ def map_to_transcripts(
         "Start_exon",
         "End_exon",
     ]
-    annot = annot.select(["_tmp_row_index"] + annotation_cols)
+    annot = annot.select(["input_idx"] + annotation_cols).rename(
+        {"input_idx": "_tmp_row_index"}
+    )
 
     # Join annotation back to input_sites
     annotated_sites = (

@@ -4,7 +4,7 @@
 # Copyright © 2023 Ye Chang yech1990@gmail.com
 # Distributed under terms of the GNU license.
 #
-# Metagene Analysis Package - Refactored for PyRanges v1
+# Metagene Analysis Package - Using ruranges and polars
 
 # Core modules with clean API names
 from .gtf import prepare_exon_ref, load_gtf
@@ -12,6 +12,7 @@ from .io import load_sites, parse_feature_file, load_reference
 from .overlap import annotate_with_features, calculate_bin_statistics
 from .annotation import map_to_transcripts, normalize_positions, show_summary_stats
 from .plotting import plot_profile
+from .map_to_local import map_to_local
 
 
 # Export main functions
@@ -20,6 +21,7 @@ __all__ = [
     "annotate_with_features",
     "calculate_bin_statistics",
     "map_to_transcripts",
+    "map_to_local",
     "normalize_positions",
     "show_summary_stats",
     # Data I/O functions - new clean API

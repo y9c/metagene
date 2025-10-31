@@ -38,10 +38,10 @@ from typing import Optional
 
 import numpy as np
 import polars as pl
-import pyranges as pr
+import ruranges
 
 
-def prepare_exon_ref(gtf_file: str) -> pr.PyRanges:
+def prepare_exon_ref(gtf_file: str) -> pl.DataFrame:
     """
     Prepares a comprehensive exon reference from a GTF file.
     Uses Polars for initial GTF parsing for speed.
@@ -141,17 +141,35 @@ def prepare_exon_ref(gtf_file: str) -> pr.PyRanges:
         )
         .alias("transcript_level")
     ).drop(["tag", "transcript_support_level"])
-    # then convert to PyRanges
-    pr_exon = pr.PyRanges(pl_df_exon.to_pandas())
 
-    # generate cumulative exon lengths
-    pr_exon = pr_exon.group_cumsum(
-        group_by=["gene_id", "transcript_id"],
-        use_strand=True,
-        cumsum_start_column="Start_exon",
-        cumsum_end_column="End_exon",
-        keep_order=True,
+    # Compute cumulative exon offsets using Polars window functions (no map_groups)
+    pl_df_exon = pl_df_exon.with_columns(
+        [
+            pl.when(pl.col("Strand") == "-")
+            .then((-pl.col("Start")).cast(pl.Int64))
+            .otherwise(pl.col("Start").cast(pl.Int64))
+            .alias("_order_key"),
+            (pl.col("End").cast(pl.Int64) - pl.col("Start").cast(pl.Int64)).alias(
+                "_exon_len"
+            ),
+        ]
     )
+
+    pl_df_exon = pl_df_exon.with_columns(
+        [
+            (
+                pl.col("_exon_len")
+                .cum_sum()
+                .sort_by(pl.col("_order_key"))
+                .over(["gene_id", "transcript_id"])
+                - pl.col("_exon_len")
+            ).alias("Start_exon"),
+        ]
+    )
+
+    pl_df_exon = pl_df_exon.with_columns(
+        (pl.col("Start_exon") + pl.col("_exon_len")).alias("End_exon")
+    ).drop(["_order_key", "_exon_len"])
 
     # Extract both start and stop codons together
     pl_df_codons = (
@@ -175,95 +193,116 @@ def prepare_exon_ref(gtf_file: str) -> pr.PyRanges:
         .select(["Chromosome", "Start", "End", "Strand", "transcript_id", "Feature"])
     )
 
-    pr_codons = pr.PyRanges(pl_df_codons.to_pandas())
-    # Join with exon reference and calculate positions
+    # Join with exon reference and calculate positions using ruranges
+    # Prepare arrays for overlap detection
+    exon_starts = pl_df_exon["Start"].cast(pl.Int64).to_numpy()
+    exon_ends = pl_df_exon["End"].cast(pl.Int64).to_numpy()
+    exon_chroms = pl_df_exon["Chromosome"].to_numpy()
+
+    codon_starts = pl_df_codons["Start"].cast(pl.Int64).to_numpy()
+    codon_ends = pl_df_codons["End"].cast(pl.Int64).to_numpy()
+    codon_chroms = pl_df_codons["Chromosome"].to_numpy()
+
+    # Create group IDs for chromosomes using vectorized operations
+    unique_chroms = np.unique(np.concatenate([exon_chroms, codon_chroms]))
+    chrom_to_id = {chrom: i for i, chrom in enumerate(unique_chroms)}
+    # Use vectorized lookup instead of list comprehension
+    exon_groups = np.vectorize(chrom_to_id.get)(exon_chroms).astype(np.uint32)
+    codon_groups = np.vectorize(chrom_to_id.get)(codon_chroms).astype(np.uint32)
+
+    # Find overlaps
+    idx_exon, idx_codon = ruranges.overlaps(
+        starts=exon_starts,
+        ends=exon_ends,
+        starts2=codon_starts,
+        ends2=codon_ends,
+        groups=exon_groups,
+        groups2=codon_groups,
+    )
+
+    # Build overlapping pairs dataframe
+    overlaps_df = pl.DataFrame(
+        {
+            "exon_idx": idx_exon,
+            "codon_idx": idx_codon,
+        }
+    )
+
+    # Join with original dataframes to get transcript_id and match by transcript_id
+    exon_indexed = pl_df_exon.with_row_index("exon_idx")
+    codon_indexed = pl_df_codons.with_row_index("codon_idx")
+
     df_codons = (
-        pr_exon.join_overlaps(pr_codons, join_type="inner", match_by="transcript_id")
-        .assign(
-            codon_pos=lambda df: np.where(
-                df["Strand"] == "+",
-                df["Start_b"] - df["Start"] + df["Start_exon"],
-                df["End"] - df["End_b"] + df["Start_exon"],
-            ),
+        overlaps_df.join(exon_indexed, on="exon_idx")
+        .join(codon_indexed, on="codon_idx", suffix="_codon")
+        .filter(pl.col("transcript_id") == pl.col("transcript_id_codon"))
+        .with_columns(
+            pl.when(pl.col("Strand") == "+")
+            .then(pl.col("Start_codon") - pl.col("Start") + pl.col("Start_exon"))
+            .otherwise(pl.col("End") - pl.col("End_codon") + pl.col("Start_exon"))
+            .alias("codon_pos")
         )
-        .loc[:, ["transcript_id", "Feature", "codon_pos"]]
+        .select(["transcript_id", "Feature", "codon_pos"])
     )
 
     # Pivot to get start_codon_pos and stop_codon_pos columns
-    pos_codon_df = df_codons.pivot_table(
-        index="transcript_id", columns="Feature", values="codon_pos", aggfunc="first"
-    ).reset_index()
+    pos_codon_df = df_codons.pivot(
+        index="transcript_id",
+        on="Feature",
+        values="codon_pos",
+        aggregate_function="first",
+    )
 
     # Rename columns to match expected format
-    pos_codon_df.columns.name = None
     if "start_codon" in pos_codon_df.columns:
-        pos_codon_df = pos_codon_df.rename(columns={"start_codon": "start_codon_pos"})
+        pos_codon_df = pos_codon_df.rename({"start_codon": "start_codon_pos"})
     if "stop_codon" in pos_codon_df.columns:
-        pos_codon_df = pos_codon_df.rename(columns={"stop_codon": "stop_codon_pos"})
+        pos_codon_df = pos_codon_df.rename({"stop_codon": "stop_codon_pos"})
 
     # Merge with exon reference
-    pr_tx = pr_exon.merge(pos_codon_df, on="transcript_id", how="left")
-    # make sure the codon positions are integers
-    # Start_exon', 'End_exon', 'start_codon_pos', 'stop_codon_pos' to Int32 to reduce size
-    pr_tx["Start_exon"] = pr_tx["Start_exon"].astype("Int32")
-    pr_tx["End_exon"] = pr_tx["End_exon"].astype("Int32")
-    pr_tx["start_codon_pos"] = pr_tx["start_codon_pos"].astype("Int32")
-    pr_tx["stop_codon_pos"] = pr_tx["stop_codon_pos"].astype("Int32")
-    return pr_tx
+    pl_tx = pl_df_exon.join(pos_codon_df, on="transcript_id", how="left")
+
+    # Convert to Int32 to reduce size
+    pl_tx = pl_tx.with_columns(
+        [
+            pl.col("Start_exon").cast(pl.Int32),
+            pl.col("End_exon").cast(pl.Int32),
+            pl.col("start_codon_pos").cast(pl.Int32),
+            pl.col("stop_codon_pos").cast(pl.Int32),
+        ]
+    )
+
+    return pl_tx
 
 
-def compress_and_save_parquet(pr_data: pr.PyRanges, output_path: str) -> None:
+def compress_and_save_parquet(pl_data: pl.DataFrame, output_path: str) -> None:
     """
-    Save PyRanges data as highly compressed Parquet file using Polars.
+    Save Polars DataFrame as highly compressed Parquet file.
 
     Args:
-        pr_data: PyRanges object to save
+        pl_data: Polars DataFrame to save
         output_path: Output file path
     """
-    print("Converting to Polars DataFrame for compression...")
+    print("Preparing DataFrame for compression...")
 
-    # Convert PyRanges to pandas DataFrame first, then to Polars
-    df_polars = pl.from_pandas(pr_data)  # type: ignore
-
-    print(f"Original DataFrame shape: {df_polars.shape}")
-    print(f"Columns: {list(df_polars.columns)}")  # type: ignore
+    print(f"Original DataFrame shape: {pl_data.shape}")
+    print(f"Columns: {list(pl_data.columns)}")
 
     # Calculate memory usage
-    memory_mb = df_polars.estimated_size("mb")  # type: ignore
+    memory_mb = pl_data.estimated_size("mb")
     print(f"Memory usage: {memory_mb:.2f} MB")
-
-    # Optimize data types for better compression
-    # print("Optimizing data types...")
-
-    # # Convert string columns to categorical where appropriate
-    # for col in df_polars.columns:  # type: ignore
-    #     if df_polars[col].dtype == pl.Utf8:  # type: ignore
-    #         unique_count = df_polars[col].n_unique()  # type: ignore
-    #         total_count = len(df_polars)
-    #
-    #         if unique_count < total_count * 0.1:  # Less than 10% unique values
-    #             df_polars = df_polars.with_columns(  # type: ignore
-    #                 pl.col(col).cast(pl.Categorical).alias(col)
-    #             )
-    #             print(f"  Converting {col} to Categorical ({unique_count} unique values)")
-
-    # Calculate optimized memory usage
-    optimized_memory_mb = df_polars.estimated_size("mb")  # type: ignore
-    print(f"Optimized memory usage: {optimized_memory_mb:.2f} MB")
 
     # Save with maximum compression using Polars
     print(f"Saving to {output_path} with ZSTD compression (level 22)...")
 
-    df_polars.write_parquet(  # type: ignore
-        output_path, compression="zstd", compression_level=22
-    )
+    pl_data.write_parquet(output_path, compression="zstd", compression_level=22)
 
     # Check file size
     file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
     print(f"Compressed file size: {file_size_mb:.2f} MB")
 
     # Calculate compression ratio
-    compression_ratio = optimized_memory_mb / file_size_mb if file_size_mb > 0 else 0
+    compression_ratio = memory_mb / file_size_mb if file_size_mb > 0 else 0
     print(f"Compression ratio: {compression_ratio:.1f}x")
 
 
@@ -305,18 +344,18 @@ def process_gtf_file(gtf_path: str, output_name: Optional[str] = None) -> str:
     print("\nProcessing GTF file with prepare_exon_ref...")
 
     try:
-        pr_result = prepare_exon_ref(gtf_path)
+        pl_result = prepare_exon_ref(gtf_path)
         processing_time = time.time() - start_time
         print(f"GTF processing completed in {processing_time:.2f} seconds")
 
-        if pr_result.empty:
+        if len(pl_result) == 0:
             raise ValueError("No data was extracted from the GTF file")
 
-        print(f"Extracted {len(pr_result)} genomic features")
+        print(f"Extracted {len(pl_result)} genomic features")
 
         # Save as compressed Parquet
         compress_start_time = time.time()
-        compress_and_save_parquet(pr_result, output_path)
+        compress_and_save_parquet(pl_result, output_path)
         compression_time = time.time() - compress_start_time
 
         print(f"Compression completed in {compression_time:.2f} seconds")
